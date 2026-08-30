@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识问答 · 游戏合集</title>
+    <style>
+        :root {
+            --bg: #0f1117; --panel: #171a23; --panel-2: #1e2230; --border: #2a2f3f;
+            --text: #e8eaf2; --muted: #9aa1b5; --accent: #8b5cf6; --accent-2: #22d3ee;
+            --good: #34d399; --bad: #f87171; --gold: #fbbf24; --shadow: 0 10px 30px rgba(0,0,0,.35);
+        }
+        body.light-mode {
+            --bg: #eef1f7; --panel: #ffffff; --panel-2: #f3f5fa; --border: #d8dce8;
+            --text: #232735; --muted: #5b6274; --shadow: 0 10px 30px rgba(35,39,53,.12);
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+            background: radial-gradient(900px 450px at 80% -10%, rgba(251,191,36,.1), transparent 60%), var(--bg);
+            color: var(--text); transition: background-color .3s, color .3s;
+        }
+        .topbar {
+            width: 100%; max-width: 620px; display: flex; align-items: center;
+            justify-content: space-between; gap: 10px; padding: 14px 16px;
+        }
+        .back { color: var(--muted); text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 10px; }
+        .back:hover { color: var(--text); background: var(--panel); }
+        h1 { font-size: 1.5rem; margin: 0; }
+        .icon-btn {
+            background: var(--panel); border: 1px solid var(--border); color: var(--text);
+            width: 40px; height: 40px; border-radius: 10px; font-size: 1.05rem; cursor: pointer;
+        }
+        .icon-btn:hover { border-color: var(--accent); }
+
+        .quiz-card {
+            width: min(94vw, 560px); background: var(--panel); border: 1px solid var(--border);
+            border-radius: 18px; padding: 22px; box-shadow: var(--shadow); margin-bottom: 20px;
+        }
+        .meta { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-weight: 600; font-size: .92rem; }
+        .meta .score-now { color: var(--gold); }
+
+        .timer-track { height: 8px; background: var(--panel-2); border-radius: 999px; margin: 14px 0 18px; overflow: hidden; }
+        .timer-fill {
+            height: 100%; width: 100%; border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            transition: width .2s linear;
+        }
+        .timer-fill.danger { background: var(--bad); }
+
+        .question { font-size: 1.25rem; font-weight: 700; min-height: 3em; margin: 0 0 16px; line-height: 1.5; }
+        .options { display: grid; gap: 10px; }
+        .options button {
+            padding: 13px 16px; font-size: 1rem; font-weight: 600; text-align: left;
+            border: 1px solid var(--border); border-radius: 12px;
+            background: var(--panel-2); color: var(--text); cursor: pointer; transition: all .15s ease;
+        }
+        .options button:hover:not(:disabled) { border-color: var(--accent); transform: translateX(4px); }
+        .options button.correct { background: rgba(52,211,153,.16); border-color: var(--good); color: var(--good); }
+        .options button.wrong { background: rgba(248,113,113,.14); border-color: var(--bad); color: var(--bad); }
+        .options button:disabled { cursor: default; }
+
+        .feedback { min-height: 1.6em; font-weight: 700; margin: 14px 0 0; }
+        .feedback.good { color: var(--good); }
+        .feedback.bad { color: var(--bad); }
+
+        .btn {
+            padding: 12px 26px; font-size: 1rem; font-weight: 700; color: #fff;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            border: none; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 6px 18px rgba(139,92,246,.35); transition: transform .15s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .center { text-align: center; }
+        .results { text-align: center; }
+        .results .emoji { font-size: 4rem; margin: 8px 0; }
+        .results h2 { margin: 4px 0 8px; font-size: 1.7rem; }
+        .results .detail { color: var(--muted); line-height: 1.9; }
+        .results .new-best { color: var(--gold); font-weight: 800; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <a class="back" href="index.html" target="_top">← 返回</a>
+        <h1>💡 知识问答</h1>
+        <button id="theme-btn" class="icon-btn" title="Toggle theme">☀️</button>
+    </header>
+
+    <div class="quiz-card" id="quiz-box">
+        <div class="meta">
+            <span id="progress">第 1 / 10 题</span>
+            <span class="score-now" id="score-now">得分：0</span>
+        </div>
+        <div class="timer-track"><div class="timer-fill" id="timer-fill"></div></div>
+        <p class="question" id="question"></p>
+        <div class="options" id="options"></div>
+        <p class="feedback" id="feedback"></p>
+        <div class="center"><button class="btn hidden" id="next-btn">继续 →</button></div>
+    </div>
+
+    <div class="quiz-card results hidden" id="results-box">
+        <div class="emoji" id="res-emoji"></div>
+        <h2 id="res-title"></h2>
+        <p class="detail" id="res-detail"></p>
+        <button class="btn" id="restart-btn">再来一局</button>
+    </div>
+
+    <script>
+        const themeBtn = document.getElementById('theme-btn');
+        function applyTheme() {
+            const light = localStorage.getItem('theme') === 'light';
+            document.body.classList.toggle('light-mode', light);
+            themeBtn.textContent = light ? '🌙' : '☀️';
+        }
+        themeBtn.onclick = () => { localStorage.setItem('theme', localStorage.getItem('theme') === 'light' ? 'dark' : 'light'); applyTheme(); };
+        applyTheme();
+        // Apply saved accent theme (shared with the hub via 'mg-accent')
+        (function () {
+            try {
+                var _a = JSON.parse(localStorage.getItem('mg-accent'));
+                if (_a && _a.length === 2) {
+                    var _r = document.documentElement.style;
+                    _r.setProperty('--accent', _a[0]);
+                    _r.setProperty('--accent-2', _a[1]);
+                }
+            } catch (e) {}
+        })();
+
+        const BANK = [
+            { q: '法国的首都是哪里？', o: ['巴黎','伦敦','柏林','马德里'], a: '巴黎' },
+            { q: "谁写了《杀死一只知更鸟》？", o: ['哈珀·李','J.K. 罗琳','海明威','马克·吐温'], a: '哈珀·李' },
+            { q: '太阳系中最大的行星是哪颗？', o: ['火星','Earth','木星','金星'], a: '木星' },
+            { q: "哪种元素的化学符号是 O？", o: ['黄金','氧','Osmium','铁'], a: '氧' },
+            { q: '地球上有几大洲？', o: ['5','6','7','8'], a: '7' },
+            { q: '最小的素数是多少？', o: ['0','1','2','3'], a: '2' },
+            { q: '印度的国兽是什么？', o: ['狮子','孟加拉虎','Elephant','Peacock'], a: '孟加拉虎' },
+            { q: '哪颗行星被称为「红色星球」？', o: ['金星','火星','Mercury','土星'], a: '火星' },
+            { q: '谁创作了《蒙娜丽莎》？', o: ['梵高','Picasso','达·芬奇','Michelangelo'], a: '达·芬奇' },
+            { q: 'HTML 代表什么？', o: ['超文本标记语言','高级文本机器语言','超链接文本模式语言','家居工具标记语言'], a: '超文本标记语言' },
+            { q: '哪个大洋面积最大？', o: ['Atlantic','Indian','Arctic','Pacific'], a: 'Pacific' },
+            { q: '一支板球队有几名场上球员？', o: ['9','10','11','12'], a: '11' },
+            { q: '水的化学式是什么？', o: ['CO2','H₂O','O2','NaCl'], a: 'H₂O' },
+            { q: '哪个国家举办了 2020 年夏季奥运会？', o: ['China','Brazil','Japan','France'], a: 'Japan' },
+            { q: '谁发明了电话？', o: ['爱迪生','亚历山大·贝尔','尼古拉·特斯拉','马可尼'], a: '亚历山大·贝尔' },
+            { q: '世界上最长的河流是哪条？', o: ['亚马逊河','尼罗河','Ganges','长江'], a: '尼罗河' },
+            { q: '六边形有几条边？', o: ['5','6','7','8'], a: '6' },
+            { q: '植物从大气中吸收哪种气体？', o: ['氧','Nitrogen','二氧化碳','Hydrogen'], a: '二氧化碳' },
+            { q: "哪种语言的母语使用者最多？", o: ['English','Hindi','汉语（普通话）','Spanish'], a: '汉语（普通话）' },
+            { q: '日本的货币是什么？', o: ['韩元','元','日元','林吉特'], a: '日元' },
+            { q: '世界上最高的山峰是哪座？', o: ['K2','Kangchenjunga','珠穆朗玛峰','Makalu'], a: '珠穆朗玛峰' },
+            { q: '谁是第一个在月球上行走的人？', o: ['巴兹·奥尔德林','尤里·加加林','尼尔·阿姆斯特朗','迈克尔·柯林斯'], a: '尼尔·阿姆斯特朗' },
+            { q: 'CPU 代表什么？', o: ['中央处理器','计算机个人单元','中央程序工具','核心处理单元'], a: '中央处理器' },
+            { q: '哪种动物被称为「沙漠之舟」？', o: ['马','骆驼','Donkey','Elephant'], a: '骆驼' },
+            { q: '第二次世界大战于哪一年结束？', o: ['1943','1944','1945','1946'], a: '1945' },
+            { q: '地球上最硬的天然物质是什么？', o: ['黄金','铁','钻石','石英'], a: '钻石' },
+            { q: '哪个国家以泰姬陵闻名？', o: ['Pakistan','India','Turkey','Iran'], a: 'India' },
+            { q: '彩虹有几种颜色？', o: ['5','6','7','8'], a: '7' },
+            { q: '哪项运动与温布尔登锦标赛相关？', o: ['Golf','板球','网球','Badminton'], a: '网球' },
+            { q: '世界上最大的哺乳动物是什么？', o: ['非洲象','蓝鲸','Giraffe','北极熊'], a: '蓝鲸' },
+            { q: "谁被称为「计算机之父」？", o: ['艾伦·图灵','查尔斯·巴贝奇','冯·诺依曼','比尔·盖茨'], a: '查尔斯·巴贝奇' },
+            { q: '哪颗行星的卫星最多？', o: ['木星','土星','Uranus','Neptune'], a: '土星' },
+            { q: '世界上最小的国家是哪个？', o: ['摩纳哥','Malta','梵蒂冈','圣马力诺'], a: '梵蒂冈' },
+            { q: '我们从阳光中可获得哪种维生素？', o: ['维生素 A','维生素 B12','维生素 C','维生素 D'], a: '维生素 D' },
+            { q: '成年人体内有多少块骨头？', o: ['196','206','216','226'], a: '206' },
+            { q: '跑得最快的陆地动物是什么？', o: ['狮子','猎豹','Leopard','Gazelle'], a: '猎豹' },
+            { q: '澳大利亚的首都是哪里？', o: ['悉尼','墨尔本','堪培拉','Perth'], a: '堪培拉' },
+            { q: '哪种血型是万能献血者？', o: ['A+','B+','AB+','O−'], a: 'O−' },
+            { q: 'WWW 代表什么？', o: ['万维网','世界网之窗','宽广世界网','网世界宽'], a: '万维网' },
+            { q: '哪种乐器有 88 个键？', o: ['Guitar','Violin','钢琴','Flute'], a: '钢琴' },
+        ];
+
+        const ROUND_SIZE = 10, TIME_PER_Q = 15, BEST_KEY = 'mg-best-trivia';
+        let questions = [], idx = 0, score = 0, correctCount = 0;
+        let timeLeft = 0, timerId = null;
+
+        const qEl = document.getElementById('question');
+        const optsEl = document.getElementById('options');
+        const feedback = document.getElementById('feedback');
+        const nextBtn = document.getElementById('next-btn');
+        const timerFill = document.getElementById('timer-fill');
+
+        function shuffle(a) {
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        function startRound() {
+            questions = shuffle([...BANK]).slice(0, ROUND_SIZE);
+            idx = 0; score = 0; correctCount = 0;
+            document.getElementById('results-box').classList.add('hidden');
+            document.getElementById('quiz-box').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const q = questions[idx];
+            document.getElementById('progress').textContent = `第 ${idx + 1} / ${ROUND_SIZE} 题`;
+            document.getElementById('score-now').textContent = `得分：${score}`;
+            qEl.textContent = q.q;
+            feedback.textContent = ''; feedback.className = 'feedback';
+            nextBtn.classList.add('hidden');
+            optsEl.innerHTML = '';
+            shuffle([...q.o]).forEach(opt => {
+                const b = document.createElement('button');
+                b.textContent = opt;
+                b.onclick = () => answer(b, opt);
+                optsEl.appendChild(b);
+            });
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerId);
+            timeLeft = TIME_PER_Q;
+            timerFill.style.width = '100%';
+            timerFill.classList.remove('danger');
+            timerId = setInterval(() => {
+                timeLeft -= 0.2;
+                timerFill.style.width = Math.max(0, timeLeft / TIME_PER_Q * 100) + '%';
+                if (timeLeft <= 5) timerFill.classList.add('danger');
+                if (timeLeft <= 0) timeUp();
+            }, 200);
+        }
+
+        function lockOptions() {
+            clearInterval(timerId);
+            const correct = questions[idx].a;
+            optsEl.querySelectorAll('button').forEach(b => {
+                b.disabled = true;
+                if (b.textContent === correct) b.classList.add('correct');
+            });
+        }
+
+        function answer(btn, chosen) {
+            lockOptions();
+            const correct = questions[idx].a;
+            if (chosen === correct) {
+                const bonus = Math.ceil(timeLeft);
+                score += 10 + bonus;
+                correctCount++;
+                feedback.textContent = `🎉 答对了！+10 分，+${bonus} 时间奖励`;
+                feedback.classList.add('good');
+            } else {
+                btn.classList.add('wrong');
+                feedback.textContent = `❌ Nope — it was "${correct}"`;
+                feedback.classList.add('bad');
+            }
+            document.getElementById('score-now').textContent = `得分：${score}`;
+            nextBtn.classList.remove('hidden');
+        }
+
+        function timeUp() {
+            lockOptions();
+            feedback.textContent = `⏰ Time's up! It was "${questions[idx].a}"`;
+            feedback.classList.add('bad');
+            nextBtn.classList.remove('hidden');
+        }
+
+        nextBtn.onclick = () => {
+            idx++;
+            if (idx < ROUND_SIZE) loadQuestion();
+            else showResults();
+        };
+
+        function showResults() {
+            clearInterval(timerId);
+            document.getElementById('quiz-box').classList.add('hidden');
+            document.getElementById('results-box').classList.remove('hidden');
+            const pct = correctCount / ROUND_SIZE;
+            let emoji, title;
+            if (pct === 1)       { emoji = '🏆'; title = 'Perfect score!'; }
+            else if (pct >= .8)  { emoji = '🌟'; title = 'Brilliant!'; }
+            else if (pct >= .6)  { emoji = '😎'; title = 'Nice work!'; }
+            else if (pct >= .4)  { emoji = '🙂'; title = 'Not bad!'; }
+            else                 { emoji = '📚'; title = 'Keep practicing!'; }
+            const prevBest = +localStorage.getItem(BEST_KEY) || 0;
+            const isBest = score > prevBest;
+            if (isBest) localStorage.setItem(BEST_KEY, score);
+            document.getElementById('res-emoji').textContent = emoji;
+            document.getElementById('res-title').textContent = title;
+            document.getElementById('res-detail').innerHTML =
+                `你答对了 <b>${correctCount} / ${ROUND_SIZE}</b> 题<br>` +
+                `最终得分：<b>${score}</b><br>` +
+                (isBest ? '<span class="new-best">🏆 New personal best!</span>' : `个人最佳：${Math.max(prevBest, score)}`);
+        }
+
+        document.getElementById('restart-btn').onclick = startRound;
+        startRound();
+    </script>
+</body>
+</html>

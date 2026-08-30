@@ -27,52 +27,83 @@
   #home {
     height: 100vh; height: 100dvh;
     display: flex; flex-direction: column;
-    padding: calc(18px + var(--safe-t)) 18px calc(18px + var(--safe-b));
+    padding: calc(14px + var(--safe-t)) 16px calc(14px + var(--safe-b));
     max-width: 560px; margin: 0 auto;
   }
-  .hero { text-align: center; padding: 18px 0 8px; }
-  .hero .logo { font-size: 44px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(255,255,255,.18)); }
-  .hero h1 { margin-top: 10px; font-size: 26px; letter-spacing: 4px; font-weight: 800;
+  .hero { text-align: center; padding: 12px 0 4px; }
+  .hero .logo { font-size: 38px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(255,255,255,.18)); }
+  .hero h1 { margin-top: 8px; font-size: 23px; letter-spacing: 4px; font-weight: 800;
     background: linear-gradient(90deg, #ffd97a, #ff8f6b, #e86ad0);
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero p { margin-top: 8px; color: #8b93ad; font-size: 13px; letter-spacing: 2px; }
+  .hero p { margin-top: 6px; color: #8b93ad; font-size: 12px; letter-spacing: 2px; }
 
-  .games { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 12px 0; }
+  /* 可滚动的游戏列表 */
+  #list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px 0 10px; }
 
-  .card {
+  .section-title { font-size: 12px; color: #7d85a3; letter-spacing: 3px; margin: 10px 4px 8px; }
+
+  /* ===== 置顶大卡（我的游戏） ===== */
+  .featured { display: flex; flex-direction: column; gap: 12px; }
+  .card.big {
     position: relative; overflow: hidden;
-    border-radius: 22px; padding: 22px 20px;
-    display: flex; align-items: center; gap: 16px;
+    border-radius: 20px; padding: 18px 18px;
+    display: flex; align-items: center; gap: 14px;
     box-shadow: 0 10px 26px rgba(0,0,0,.35);
-    cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
+    cursor: pointer; transition: transform .15s ease;
   }
-  .card:active { transform: scale(.97); }
-  .card .icon {
-    width: 64px; height: 64px; flex-shrink: 0;
-    border-radius: 18px; display: flex; align-items: center; justify-content: center;
-    font-size: 34px;
+  .card.big:active { transform: scale(.97); }
+  .card.big .icon {
+    width: 58px; height: 58px; flex-shrink: 0;
+    border-radius: 16px; display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
   }
-  .card .info { flex: 1; min-width: 0; }
-  .card .info h2 { font-size: 19px; font-weight: 800; letter-spacing: 1px; }
-  .card .info p { margin-top: 5px; font-size: 12.5px; opacity: .75; line-height: 1.5; }
-  .card .go {
-    flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  .card.big .info { flex: 1; min-width: 0; }
+  .card.big .info h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
+  .card.big .info p { margin-top: 4px; font-size: 12px; opacity: .78; line-height: 1.45; }
+  .card.big .go {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 900; opacity: .9;
+    font-size: 15px; font-weight: 900; opacity: .9;
+  }
+  .badge {
+    position: absolute; top: 12px; right: 14px;
+    font-size: 10px; letter-spacing: 1px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px;
   }
 
-  /* 华容道卡片：深蓝夜色风（贴合游戏本身配色） */
+  /* 华容道卡片：深蓝夜色风 */
   .card.klotski { background: linear-gradient(135deg, #1b2a5e 0%, #0f3460 60%, #16213e 100%); border: 1px solid rgba(233,69,96,.35); }
   .card.klotski .icon { background: rgba(233,69,96,.15); box-shadow: inset 0 0 0 1.5px rgba(233,69,96,.45); }
   .card.klotski h2 { color: #ff7a95; }
+  .card.klotski p { color: #9fb0d8; }
   .card.klotski .go { background: rgba(233,69,96,.22); color: #e94560; }
+  .card.klotski .badge { background: rgba(233,69,96,.2); color: #ff8ba0; border: 1px solid rgba(233,69,96,.4); }
 
-  /* 消消乐卡片：暖橙奶油风（贴合游戏本身配色） */
+  /* 水果叠叠乐卡片：暖橙奶油风 */
   .card.match { background: linear-gradient(135deg, #ffd9a0 0%, #ffb968 60%, #ff9f2e 100%); border: 1px solid rgba(255,255,255,.5); }
   .card.match .icon { background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 1.5px rgba(122,74,33,.25); }
   .card.match h2 { color: #6b3d14; }
   .card.match p { color: #7a4a21; }
   .card.match .go { background: rgba(122,74,33,.15); color: #7a4a21; }
+  .card.match .badge { background: rgba(122,74,33,.14); color: #6b3d14; border: 1px solid rgba(122,74,33,.3); }
+
+  /* ===== 其余游戏：两列网格 ===== */
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .card.mini {
+    border-radius: 18px; padding: 15px 14px 13px;
+    display: flex; flex-direction: column; gap: 9px;
+    box-shadow: 0 8px 20px rgba(0,0,0,.32);
+    cursor: pointer; transition: transform .15s ease;
+    color: #fff;
+  }
+  .card.mini:active { transform: scale(.96); }
+  .card.mini .icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; background: rgba(255,255,255,.18);
+  }
+  .card.mini h2 { font-size: 15.5px; font-weight: 800; letter-spacing: .5px; text-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .card.mini p { font-size: 11px; opacity: .82; line-height: 1.45; }
 
   .footer { text-align: center; color: #565e78; font-size: 11px; letter-spacing: 2px; padding-top: 8px; }
 
@@ -105,27 +136,37 @@
       <p>选 一 个，开 始 玩</p>
     </div>
 
-    <div class="games">
-      <div class="card klotski" data-src="huarongdao.html" data-title="6×6 华容道">
-        <div class="icon">🚗</div>
-        <div class="info">
-          <h2>6×6 华容道</h2>
-          <p>滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。</p>
+    <div id="list">
+      <!-- 置顶：我的游戏 -->
+      <div class="section-title">我 的 游 戏</div>
+      <div class="featured">
+        <div class="card big klotski" data-src="华容道.html" data-title="6×6 华容道">
+          <div class="icon">🚗</div>
+          <div class="info">
+            <h2>6×6 华容道</h2>
+            <p>滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。</p>
+          </div>
+          <div class="badge">我的</div>
+          <div class="go">›</div>
         </div>
-        <div class="go">›</div>
+
+        <div class="card big match" data-src="水果叠叠乐.html" data-title="水果叠叠乐">
+          <div class="icon">🍉</div>
+          <div class="info">
+            <h2>水果叠叠乐</h2>
+            <p>点击相同水果消除进槽，槽满即输，清空棋盘过关，轻松解压。</p>
+          </div>
+          <div class="badge">我的</div>
+          <div class="go">›</div>
+        </div>
       </div>
 
-      <div class="card match" data-src="xiaoxiaole.html" data-title="水果叠叠乐">
-        <div class="icon">🍉</div>
-        <div class="info">
-          <h2>水果叠叠乐</h2>
-          <p>点击相同水果消除进槽，槽满即输，清空棋盘过关，轻松解压。</p>
-        </div>
-        <div class="go">›</div>
-      </div>
+      <!-- 其余游戏网格 -->
+      <div class="section-title">精 选 游 戏</div>
+      <div class="grid" id="grid"></div>
     </div>
 
-    <div class="footer">共 2 款 · 离线可玩</div>
+    <div class="footer">共 17 款 · 离线可玩</div>
   </div>
 
   <!-- 游戏运行视图 -->
@@ -143,6 +184,39 @@
   var frame   = document.getElementById('gameFrame');
   var backBtn = document.getElementById('backBtn');
   var inGame  = false;
+
+  // ===== 精选游戏列表（文件名，图标，名称，简介，渐变色） =====
+  var GAMES = [
+    { f: '2048.html',      i: '🔢', n: '2048',       d: '滑动合并数字，冲向 2048', g: ['#f0b34c', '#d97a1e'] },
+    { f: '扫雷.html',       i: '💣', n: '扫雷',        d: '推理排雷，别踩炸弹',     g: ['#4a5568', '#2d3648'] },
+    { f: '数独.html',       i: '🧮', n: '数独',        d: '填数字，行列宫不重复',   g: ['#7a5fc4', '#4e3a87'] },
+    { f: '数字华容道.html', i: '🧩', n: '数字华容道',  d: '滑动数字块，恢复顺序',   g: ['#2f9e8f', '#1b6a5e'] },
+    { f: '记忆翻牌.html',   i: '🃏', n: '记忆翻牌',    d: '翻出相同的两张牌',       g: ['#c05fa0', '#83395f'] },
+    { f: '西蒙记忆.html',   i: '🎵', n: '西蒙记忆',    d: '跟随灯光记住序列',       g: ['#4c9fb0', '#2b6571'] },
+    { f: '打砖块.html',     i: '🟧', n: '打砖块',      d: '弹球撞碎所有砖块',       g: ['#d95f6a', '#9e3540'] },
+    { f: '像素小鸟.html',   i: '🐦', n: '像素小鸟',    d: '点击飞行，穿过缝隙',     g: ['#5db8e8', '#2e7fae'] },
+    { f: '打地鼠.html',     i: '🔨', n: '打地鼠',      d: '地鼠冒头就砸，拼手速',   g: ['#a8814f', '#71562f'] },
+    { f: '切水果.html',     i: '🍊', n: '切水果',      d: '划刀切水果，躲开炸弹',   g: ['#e8743c', '#a84a1e'] },
+    { f: '车道狂飙.html',   i: '🏎️', n: '车道狂飙',    d: '躲避车流，狂飙冲刺',     g: ['#b8434f', '#7a1f28'] },
+    { f: '泡泡龙.html',     i: '🫧', n: '泡泡龙',      d: '瞄准发射，三色消除',     g: ['#3fa8c9', '#20708c'] },
+    { f: '塔防.html',       i: '🏰', n: '塔防',        d: '布置炮塔，拦截敌军',     g: ['#6b5fb8', '#3f3580'] },
+    { f: '井字棋.html',     i: '⭕', n: '井字棋',      d: '与电脑对战，三连线胜',   g: ['#5a8f3c', '#38611f'] },
+    { f: '知识问答.html',   i: '🧠', n: '知识问答',    d: '40 道中文知识题挑战',   g: ['#c48f3a', '#8f6522'] }
+  ];
+
+  // 生成网格卡片（按 GAMES 数组渲染，文件不存在时自动隐藏）
+  var grid = document.getElementById('grid');
+  var cardsHtml = '';
+  for (var k = 0; k < GAMES.length; k++) {
+    var gm = GAMES[k];
+    cardsHtml += '<div class="card mini" data-src="' + gm.f + '" data-title="' + gm.n + '"'
+      + ' style="background:linear-gradient(135deg,' + gm.g[0] + ',' + gm.g[1] + ')">'
+      + '<div class="icon">' + gm.i + '</div>'
+      + '<h2>' + gm.n + '</h2>'
+      + '<p>' + gm.d + '</p>'
+      + '</div>';
+  }
+  grid.innerHTML = cardsHtml;
 
   // 打开游戏：进入运行视图，并压入一条历史记录，
   // 这样安卓返回手势/返回键会先回到主页而不是直接退出 App

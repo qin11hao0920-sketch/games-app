@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>6×6 华容道</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; min-height: 100dvh; margin: 0;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            touch-action: manipulation;
+            padding: 10px;
+        }
+        .game-wrapper {
+            background: #16213e;
+            padding: 16px 14px 20px;
+            border-radius: 24px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+            display: flex; flex-direction: column; align-items: center;
+            width: 100%; max-width: 380px;
+        }
+        h1 {
+            margin: 0 0 6px; color: #e94560;
+            font-weight: 700; font-size: 22px; letter-spacing: 3px;
+        }
+        .top-bar {
+            width: 100%; display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 12px;
+            color: #a3b1c6; font-size: 13px;
+        }
+        .badge {
+            background: #0f3460; padding: 4px 14px; border-radius: 20px;
+            font-weight: 600; color: #e94560; font-size: 13px;
+        }
+        .top-bar button {
+            background: #533483; border: none; color: #eee;
+            padding: 5px 14px; border-radius: 20px; font-size: 12px;
+            font-weight: 600; cursor: pointer; box-shadow: 0 3px 0 #3a1f6e;
+            transition: 0.1s; touch-action: manipulation;
+        }
+        .top-bar button:active { transform: translateY(3px); box-shadow: 0 0px 0 #3a1f6e; }
+        #gridContainer {
+            position: relative; width: 100%; aspect-ratio: 6/6;
+            background: #0f3460; border-radius: 16px;
+            box-shadow: inset 0 0 0 3px #1a1a4e, inset 0 0 20px #0a0a2a;
+            margin-bottom: 14px; touch-action: none;
+        }
+        #gridContainer::before {
+            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20% 16.667%;
+            pointer-events: none; z-index: 0;
+        }
+        #gridContainer.generating::after {
+            content: '正在生成新关卡...'; position: absolute; inset: 0;
+            display: flex; justify-content: center; align-items: center;
+            color: #a3b1c6; font-size: 14px; font-weight: 600;
+            background: rgba(15,52,96,0.88); border-radius: 16px; z-index: 8;
+        }
+        .block {
+            position: absolute; left: 0; top: 0; border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.95);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            cursor: pointer; transition: transform 0.1s ease, box-shadow 0.15s;
+            transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0);
+            will-change: transform;
+            contain: layout paint;
+            z-index: 1; box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 6px 14px rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.15);
+            touch-action: none;
+        }
+        .block:active { transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(0.95); }
+        .block.selected {
+            box-shadow: 0 0 0 3px #ffd700, 0 4px 0 rgba(0,0,0,0.4), 0 8px 24px rgba(255,215,0,0.5);
+            z-index: 3; transform: translate3d(var(--tx, 0px), var(--ty, 0px), 0) scale(1.03);
+        }
+        .block-goal {
+            background: linear-gradient(145deg, #e94560, #b81d3a);
+            border-color: #ff6b7a;
+        }
+        .block-blue { background: linear-gradient(145deg, #4a90d9, #2565a8); }
+        .block-green { background: linear-gradient(145deg, #27ae60, #1a7a40); }
+        .block-purple { background: linear-gradient(145deg, #8e44ad, #6a2d8e); }
+        .block-orange { background: linear-gradient(145deg, #e67e22, #b85c10); }
+        .block-teal { background: linear-gradient(145deg, #16a085, #0e7060); }
+        .block-pink { background: linear-gradient(145deg, #e84393, #b02a6e); }
+
+        .exit-marker {
+            position: absolute; right: -8px; top: 33.33%; height: 16.67%;
+            width: 10px; background: rgba(233, 69, 96, 0.3);
+            border-radius: 0 8px 8px 0;
+            border: 2px solid #e94560; border-left: none; z-index: 0;
+        }
+        .exit-marker::after {
+            content: '出口'; position: absolute; right: -30px; top: 50%;
+            transform: translateY(-50%) rotate(90deg); color: #e94560;
+            font-size: 9px; font-weight: 700; letter-spacing: 1px; opacity: 0.7;
+        }
+
+        .controls {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 6px; width: 65%; max-width: 180px; margin: 0 0 10px;
+        }
+        .ctrl-btn {
+            background: #533483; border: none; border-radius: 12px;
+            color: white; font-size: 22px; padding: 10px 0;
+            cursor: pointer; box-shadow: 0 4px 0 #3a1f6e;
+            transition: 0.06s linear; touch-action: manipulation;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .ctrl-btn:active { transform: translateY(4px); box-shadow: 0 0px 0 #3a1f6e; }
+        .ctrl-btn.up { grid-column: 2; }
+        .ctrl-btn.left { grid-column: 1; grid-row: 2; }
+        .ctrl-btn.right { grid-column: 3; grid-row: 2; }
+        .ctrl-btn.down { grid-column: 2; grid-row: 2; }
+
+        .nav-bar {
+            display: flex; gap: 10px; margin-top: 2px;
+        }
+        .nav-bar button {
+            background: #0f3460; border: none; color: #a3b1c6;
+            padding: 6px 18px; border-radius: 30px; font-size: 13px;
+            font-weight: 600; cursor: pointer; box-shadow: 0 3px 0 #0a1a3a;
+            transition: 0.1s; touch-action: manipulation;
+        }
+        .nav-bar button:active { transform: translateY(3px); box-shadow: 0 0px 0 #0a1a3a; }
+
+        #winOverlay {
+            display: none; position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.75); border-radius: 16px;
+            justify-content: center; align-items: center; flex-direction: column;
+            z-index: 10; backdrop-filter: blur(4px);
+        }
+        #winOverlay.show { display: flex; }
+        #winOverlay h2 { color: #ffd700; font-size: 26px; margin: 0 0 6px; }
+        #winOverlay p { color: #eee; font-size: 14px; margin: 0; }
+        #winOverlay button {
+            margin-top: 14px; padding: 10px 32px; border: none;
+            background: #e94560; color: white; font-weight: 700;
+            font-size: 14px; border-radius: 40px; cursor: pointer;
+            box-shadow: 0 4px 0 #b81d3a; transition: 0.08s;
+            touch-action: manipulation;
+        }
+        #winOverlay button:active { transform: translateY(4px); box-shadow: 0 0px 0 #b81d3a; }
+
+        .hint-text {
+            color:#4a5568; font-size:11px; margin:6px 0 0; letter-spacing:0.5px;
+            text-align: center;
+        }
+
+        @media (max-width: 380px) {
+            .game-wrapper { padding: 12px 8px 16px; border-radius: 18px; }
+            .block { border-radius: 6px; font-size: 15px; }
+            .ctrl-btn { font-size: 20px; padding: 8px 0; }
+            .controls { width: 70%; }
+        }
+    </style>
+</head>
+<body>
+<div class="game-wrapper">
+    <h1>🚗 华容道</h1>
+    <div class="top-bar">
+        <span class="badge" id="levelDisplay">第 1 关</span>
+        <span class="badge" id="stepCounter">0 步</span>
+        <button id="resetBtn">重置</button>
+    </div>
+    <div id="gridContainer">
+        <div class="exit-marker"></div>
+        <div id="winOverlay">
+            <h2>🎉 通关！</h2>
+            <p>用了 <span id="winSteps">0</span> 步</p>
+            <button id="nextBtn">下一关</button>
+        </div>
+    </div>
+    <div class="nav-bar">
+        <button id="prevBtn">上一关</button>
+        <button id="nextLevelBtn">下一关</button>
+    </div>
+    <p class="hint-text">点击方块选中 · 横块只能左右移 · 竖块只能上下移</p>
+</div>
+
+<script id="fallbackLevelsData" type="application/json">[[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":1,"y":3,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":4,"y":0,"w":1,"h":3,"color":"block-green"},{"id":3,"x":3,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":4,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":2,"y":0,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":5,"y":2,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":0,"y":4,"w":1,"h":2,"color":"block-blue"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":3,"y":2,"w":1,"h":3,"color":"block-green"},{"id":3,"x":5,"y":0,"w":1,"h":2,"color":"block-purple"},{"id":4,"x":2,"y":4,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":0,"y":0,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":3,"y":5,"w":3,"h":1,"color":"block-pink"},{"id":7,"x":5,"y":2,"w":1,"h":2,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":2,"y":5,"w":3,"h":1,"color":"block-blue"},{"id":2,"x":5,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":1,"y":0,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":3,"y":2,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":0,"y":3,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":2,"y":1,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":0,"y":1,"w":3,"h":1,"color":"block-green"},{"id":3,"x":3,"y":4,"w":1,"h":2,"color":"block-purple"},{"id":4,"x":5,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":4,"y":4,"w":2,"h":1,"color":"block-teal"},{"id":6,"x":2,"y":0,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":3,"y":2,"w":1,"h":2,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":2,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":2,"y":5,"w":3,"h":1,"color":"block-green"},{"id":3,"x":1,"y":1,"w":3,"h":1,"color":"block-purple"},{"id":4,"x":2,"y":0,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":5,"y":1,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":0,"y":3,"w":3,"h":1,"color":"block-pink"},{"id":7,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":4,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":5,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":5,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":2,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":0,"y":4,"w":3,"h":1,"color":"block-pink"},{"id":7,"x":1,"y":0,"w":2,"h":1,"color":"block-blue"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":0,"y":4,"w":3,"h":1,"color":"block-blue"},{"id":2,"x":4,"y":0,"w":1,"h":3,"color":"block-green"},{"id":3,"x":2,"y":3,"w":3,"h":1,"color":"block-purple"},{"id":4,"x":0,"y":5,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":5,"y":3,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":3,"y":0,"w":1,"h":3,"color":"block-pink"},{"id":7,"x":5,"y":1,"w":1,"h":2,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":2,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":0,"y":3,"w":1,"h":2,"color":"block-green"},{"id":3,"x":3,"y":3,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":2,"y":5,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":5,"y":0,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":1,"y":4,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":3,"y":0,"w":1,"h":3,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":5,"y":2,"w":1,"h":2,"color":"block-green"},{"id":3,"x":0,"y":1,"w":3,"h":1,"color":"block-purple"},{"id":4,"x":3,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":2,"y":2,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":2,"y":5,"w":3,"h":1,"color":"block-pink"},{"id":7,"x":3,"y":4,"w":2,"h":1,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":4,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":3,"y":2,"w":1,"h":2,"color":"block-green"},{"id":3,"x":5,"y":2,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":0,"y":3,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":4,"y":0,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":1,"y":0,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":2,"y":1,"w":1,"h":2,"color":"block-blue"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":3,"y":0,"w":1,"h":3,"color":"block-green"},{"id":3,"x":5,"y":2,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":1,"y":4,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":2,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":0,"y":0,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":3,"y":5,"w":3,"h":1,"color":"block-blue"},{"id":8,"x":3,"y":3,"w":2,"h":1,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":1,"y":5,"w":3,"h":1,"color":"block-blue"},{"id":2,"x":3,"y":0,"w":1,"h":3,"color":"block-green"},{"id":3,"x":4,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":5,"y":0,"w":1,"h":3,"color":"block-orange"},{"id":5,"x":2,"y":0,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":2,"y":4,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":2,"y":2,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":0,"y":3,"w":2,"h":1,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":2,"y":1,"w":2,"h":1,"color":"block-blue"},{"id":2,"x":0,"y":3,"w":1,"h":2,"color":"block-green"},{"id":3,"x":1,"y":5,"w":3,"h":1,"color":"block-purple"},{"id":4,"x":4,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":2,"y":2,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":5,"y":0,"w":1,"h":3,"color":"block-pink"},{"id":7,"x":4,"y":3,"w":2,"h":1,"color":"block-blue"},{"id":8,"x":3,"y":3,"w":1,"h":2,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":5,"y":0,"w":1,"h":3,"color":"block-green"},{"id":3,"x":3,"y":1,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":4,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":0,"y":5,"w":2,"h":1,"color":"block-teal"},{"id":6,"x":2,"y":2,"w":1,"h":3,"color":"block-pink"},{"id":7,"x":4,"y":3,"w":2,"h":1,"color":"block-blue"},{"id":8,"x":2,"y":0,"w":2,"h":1,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":1,"y":5,"w":2,"h":1,"color":"block-green"},{"id":3,"x":2,"y":0,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":4,"y":3,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":2,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":5,"y":1,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":3,"y":1,"w":1,"h":3,"color":"block-blue"},{"id":8,"x":0,"y":4,"w":1,"h":2,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":5,"y":2,"w":1,"h":2,"color":"block-green"},{"id":3,"x":2,"y":2,"w":1,"h":2,"color":"block-purple"},{"id":4,"x":0,"y":4,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":0,"y":0,"w":3,"h":1,"color":"block-teal"},{"id":6,"x":4,"y":1,"w":1,"h":3,"color":"block-pink"},{"id":7,"x":5,"y":0,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":1,"y":1,"w":2,"h":1,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":2,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":2,"y":4,"w":2,"h":1,"color":"block-green"},{"id":3,"x":1,"y":5,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":5,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":0,"y":4,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":4,"y":4,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":3,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":4,"y":1,"w":1,"h":2,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":3,"y":2,"w":1,"h":3,"color":"block-green"},{"id":3,"x":1,"y":3,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":3,"y":5,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":0,"y":3,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":2,"y":1,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":4,"y":4,"w":2,"h":1,"color":"block-blue"},{"id":8,"x":5,"y":0,"w":1,"h":2,"color":"block-green"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":5,"y":2,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":3,"y":1,"w":1,"h":3,"color":"block-green"},{"id":3,"x":0,"y":2,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":4,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":4,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":1,"y":0,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":1,"y":3,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":2,"y":4,"w":1,"h":2,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":1,"y":4,"w":3,"h":1,"color":"block-blue"},{"id":2,"x":5,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":5,"y":3,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":4,"y":0,"w":1,"h":3,"color":"block-teal"},{"id":6,"x":0,"y":3,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":2,"y":2,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":0,"y":0,"w":3,"h":1,"color":"block-green"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":0,"y":3,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":2,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":4,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":1,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":0,"y":0,"w":3,"h":1,"color":"block-teal"},{"id":6,"x":5,"y":3,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":1,"y":3,"w":3,"h":1,"color":"block-blue"},{"id":8,"x":5,"y":1,"w":1,"h":2,"color":"block-green"},{"id":9,"x":2,"y":4,"w":2,"h":1,"color":"block-purple"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":1,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":2,"y":3,"w":1,"h":2,"color":"block-green"},{"id":3,"x":5,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":3,"y":4,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":2,"y":5,"w":3,"h":1,"color":"block-teal"},{"id":6,"x":0,"y":3,"w":2,"h":1,"color":"block-pink"},{"id":7,"x":0,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":2,"y":0,"w":2,"h":1,"color":"block-green"},{"id":9,"x":4,"y":1,"w":1,"h":3,"color":"block-purple"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":0,"y":3,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":1,"y":3,"w":3,"h":1,"color":"block-green"},{"id":3,"x":3,"y":5,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":2,"y":4,"w":1,"h":2,"color":"block-orange"},{"id":5,"x":3,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":5,"y":1,"w":1,"h":3,"color":"block-pink"},{"id":7,"x":4,"y":1,"w":1,"h":3,"color":"block-blue"},{"id":8,"x":0,"y":1,"w":1,"h":2,"color":"block-green"},{"id":9,"x":3,"y":0,"w":2,"h":1,"color":"block-purple"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":5,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":4,"y":0,"w":1,"h":3,"color":"block-purple"},{"id":4,"x":4,"y":5,"w":2,"h":1,"color":"block-orange"},{"id":5,"x":0,"y":4,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":1,"y":3,"w":3,"h":1,"color":"block-pink"},{"id":7,"x":2,"y":4,"w":1,"h":2,"color":"block-blue"},{"id":8,"x":5,"y":3,"w":1,"h":2,"color":"block-green"},{"id":9,"x":0,"y":0,"w":1,"h":3,"color":"block-purple"}],[{"id":0,"x":1,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":4,"y":1,"w":1,"h":2,"color":"block-blue"},{"id":2,"x":3,"y":1,"w":1,"h":2,"color":"block-green"},{"id":3,"x":2,"y":0,"w":1,"h":2,"color":"block-purple"},{"id":4,"x":0,"y":3,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":3,"y":4,"w":3,"h":1,"color":"block-teal"},{"id":6,"x":0,"y":0,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":1,"y":4,"w":2,"h":1,"color":"block-blue"},{"id":8,"x":5,"y":1,"w":1,"h":3,"color":"block-green"},{"id":9,"x":3,"y":0,"w":3,"h":1,"color":"block-purple"}],[{"id":0,"x":0,"y":2,"w":2,"h":1,"color":"block-goal"},{"id":1,"x":3,"y":0,"w":1,"h":3,"color":"block-blue"},{"id":2,"x":0,"y":3,"w":3,"h":1,"color":"block-green"},{"id":3,"x":4,"y":0,"w":2,"h":1,"color":"block-purple"},{"id":4,"x":2,"y":4,"w":3,"h":1,"color":"block-orange"},{"id":5,"x":4,"y":1,"w":1,"h":2,"color":"block-teal"},{"id":6,"x":0,"y":4,"w":1,"h":2,"color":"block-pink"},{"id":7,"x":3,"y":5,"w":3,"h":1,"color":"block-blue"},{"id":8,"x":2,"y":1,"w":1,"h":2,"color":"block-green"},{"id":9,"x":5,"y":2,"w":1,"h":3,"color":"block-purple"}]]</script>
+<script id="generatorSource" type="text/plain">const G = 6;
+const GOAL_X = 4;
+const MAX_STATES = 800000;
+const COLORS = ['block-blue','block-green','block-purple','block-orange','block-teal','block-pink'];
+const BLOCK_TYPES = [{w:2,h:1},{w:1,h:2},{w:3,h:1},{w:1,h:3}];
+
+let seed = Date.now() % 2147483647;
+function rng() {
+    seed = seed * 16807 % 2147483647;
+    return (seed - 1) / 2147483646;
+}
+function rngInt(n) { return Math.floor(rng() * n); }
+function cloneBlocks(blocks) { return blocks.map(block => ({...block})); }
+
+function buildGrid(blocks) {
+    const grid = Array.from({length:G}, () => Array(G).fill(-1));
+    for (const block of blocks)
+        for (let x=0; x<block.w; x++) for (let y=0; y<block.h; y++)
+            grid[block.x+x][block.y+y] = block.id;
+    return grid;
+}
+
+function hasOverlap(blocks) {
+    const grid = Array.from({length:G}, () => Array(G).fill(false));
+    for (const block of blocks)
+        for (let x=0; x<block.w; x++) for (let y=0; y<block.h; y++) {
+            const cx = block.x+x, cy = block.y+y;
+            if (cx<0 || cy<0 || cx>=G || cy>=G || grid[cx][cy]) return true;
+            grid[cx][cy] = true;
+        }
+    return false;
+}
+
+function serialize(blocks) { return blocks.map(block => `${block.id}:${block.x},${block.y}`).join('|'); }
+
+function solveMinSteps(blocks) {
+    const start = cloneBlocks(blocks);
+    const visited = new Set([serialize(start)]);
+    let front = [start], depth = 0, count = 0;
+    while (front.length && count < MAX_STATES) {
+        const next = [];
+        for (const current of front) {
+            count++;
+            if (count >= MAX_STATES) return -1;
+            const red = current.find(block => block.id === 0);
+            if (red && red.x === GOAL_X) return depth;
+            const grid = buildGrid(current);
+            for (const block of current) {
+                const horizontal = block.w > block.h;
+                const directions = horizontal ? [[-1,0],[1,0]] : [[0,-1],[0,1]];
+                for (const [dx,dy] of directions) {
+                    const nx = block.x+dx, ny = block.y+dy;
+                    if (nx<0 || ny<0 || nx+block.w>G || ny+block.h>G) continue;
+                    let valid = true;
+                    for (let x=0; x<block.w && valid; x++) for (let y=0; y<block.h; y++)
+                        if (grid[nx+x][ny+y] !== -1 && grid[nx+x][ny+y] !== block.id) valid = false;
+                    if (!valid) continue;
+                    const nextState = current.map(item => item.id===block.id ? {...item,x:nx,y:ny} : item);
+                    const key = serialize(nextState);
+                    if (!visited.has(key)) { visited.add(key); next.push(nextState); }
+                }
+            }
+        }
+        front = next;
+        depth++;
+    }
+    return -1;
+}
+
+function pathBlockerCount(blocks) {
+    const red = blocks.find(block => block.id === 0);
+    if (!red) return 0;
+    const blockers = new Set();
+    for (const block of blocks) {
+        if (block.id === 0) continue;
+        for (let x=0; x<block.w; x++) for (let y=0; y<block.h; y++) {
+            const cx = block.x+x, cy = block.y+y;
+            if (cy===2 && cx>=red.x+2 && cx<=GOAL_X+1) blockers.add(block.id);
+        }
+    }
+    return blockers.size;
+}
+
+function generateLevel(blockCount, minSteps) {
+    for (let attempt=0; attempt<2000; attempt++) {
+        const redX = rngInt(2);
+        const blocks = [{id:0,x:redX,y:2,w:2,h:1,color:'block-goal'}];
+        let complete = true;
+        for (let id=1; id<blockCount && complete; id++) {
+            let placed = false;
+            const preferPath = rng() < 0.7;
+            for (let tries=0; tries<100 && !placed; tries++) {
+                const type = BLOCK_TYPES[rngInt(BLOCK_TYPES.length)];
+                let x, y;
+                if (preferPath && type.h===1) {
+                    const minX=redX+2, maxX=G-type.w;
+                    if (minX>maxX) continue;
+                    x=minX+rngInt(maxX-minX+1); y=2;
+                } else if (preferPath && type.w===1) {
+                    const minX=redX+2;
+                    if (minX>G-1) continue;
+                    x=minX+rngInt(G-minX);
+                    y=rngInt(G-type.h+1);
+                    if (y>2 || y+type.h<=2) y=Math.max(0, Math.min(G-type.h, 3-type.h));
+                } else {
+                    x=rngInt(G-type.w+1); y=rngInt(G-type.h+1);
+                }
+                const candidate={id,x,y,w:type.w,h:type.h,color:COLORS[(id-1)%COLORS.length]};
+                if (!hasOverlap([...blocks,candidate])) { blocks.push(candidate); placed=true; }
+            }
+            if (!placed) complete=false;
+        }
+        if (!complete || blocks.length!==blockCount || pathBlockerCount(blocks)<2) continue;
+        const min = solveMinSteps(blocks);
+        if (min >= minSteps) return blocks;
+    }
+    return null;
+}
+
+function setGeneratorSeed(value) {
+    seed = Number(value) || Date.now();
+    seed %= 2147483647;
+    if (seed<=0) seed += 2147483646;
+}
+
+function generateLevels(seedValue, onLevel, onDone) {
+    setGeneratorSeed(seedValue);
+    const configs = [
+        {count:8, target:10, minSteps:12, floor:12},
+        {count:9, target:10, minSteps:16, floor:14},
+        {count:10, target:10, minSteps:18, floor:16}
+    ];
+    let configIndex = 0, tierCount = 0, count = 0, failedAttempts = 0;
+    function generateNext() {
+        if (configIndex >= configs.length) { onDone(count); return; }
+        const config = configs[configIndex];
+        const level = generateLevel(config.count, config.minSteps);
+        if (level) {
+            count++;
+            tierCount++;
+            failedAttempts = 0;
+            onLevel(level, count);
+        } else {
+            failedAttempts++;
+        }
+        if (tierCount >= config.target) {
+            configIndex++;
+            tierCount = 0;
+            failedAttempts = 0;
+        } else if (failedAttempts >= 12) {
+            // Keep filling the tier, but never accept a puzzle below its safety floor.
+            config.minSteps = Math.max(config.floor, config.minSteps - 2);
+            failedAttempts = 0;
+        }
+        setTimeout(generateNext, 0);
+    }
+    generateNext();
+}
+
+if (typeof document === 'undefined') {
+    self.onmessage = event => {
+        const levels = [];
+        generateLevels(
+            event.data && event.data.seed,
+            (level, count) => { levels.push(level); self.postMessage({type:'level', level, count}); },
+            count => self.postMessage({type:'done', count})
+        );
+    };
+}</script>
+<script>
+(function(){
+    const G = 6, GOAL_X = 4;
+
+    const FALLBACK_LEVELS = (() => {
+        try { return JSON.parse(document.getElementById('fallbackLevelsData').textContent); }
+        catch (error) { return []; }
+    })();
+    const generatorSource = document.getElementById('generatorSource').textContent;
+    const generatorApi = new Function('self', 'document', generatorSource + '\nreturn {generateLevels};')(window, document);
+
+    function cloneBlocks(blocks) { return blocks.map(b => ({...b})); }
+
+    function buildGrid(blocks) {
+        const g = Array.from({length:G}, () => Array(G).fill(-1));
+        for (const b of blocks)
+            for (let i=0;i<b.w;i++) for(let j=0;j<b.h;j++) g[b.x+i][b.y+j]=b.id;
+        return g;
+    }
+
+    let LEVELS = [];
+    let levelWorker = null;
+    let generatorWorkerUrl = null;
+
+    // Game state
+    let currentLevel = 0, blocks = [], grid = [], selectedId = null, steps = 0, gameOver = false;
+
+    // Touch state management
+    const touchState = {
+        startX: 0,
+        startY: 0,
+        lastX: 0,
+        lastY: 0,
+        startTime: 0,
+        moved: false,
+        swiped: false,
+        targetBlockId: null,
+        handled: false,
+        dragging: false
+    };
+
+    const container = document.getElementById('gridContainer');
+    const levelDisplay = document.getElementById('levelDisplay');
+    const stepSpan = document.getElementById('stepCounter');
+    const winOverlay = document.getElementById('winOverlay');
+    const winStepsSpan = document.getElementById('winSteps');
+    const blockElements = new Map();
+
+    function getCellSize() { return container.getBoundingClientRect().width / G; }
+
+    function loadLevel(index) {
+        if (LEVELS.length === 0) return;
+        const lv = LEVELS[((index%LEVELS.length)+LEVELS.length)%LEVELS.length];
+        blocks = cloneBlocks(lv);
+        grid = buildGrid(blocks);
+        selectedId = null; steps = 0; gameOver = false;
+        winOverlay.classList.remove('show');
+        updateUI(); render(true);
+    }
+
+    function resetCurrent() { if (LEVELS.length) loadLevel(currentLevel); }
+    function nextLevel() { if (LEVELS.length) { currentLevel=(currentLevel+1)%LEVELS.length; loadLevel(currentLevel); } }
+    function prevLevel() { if (LEVELS.length) { currentLevel=(currentLevel-1+LEVELS.length)%LEVELS.length; loadLevel(currentLevel); } }
+
+    function render(forceRebuild = false) {
+        if (forceRebuild) {
+            blockElements.forEach(el => el.remove());
+            blockElements.clear();
+        }
+        const cs = getCellSize();
+        blocks.forEach(block => {
+            let el = blockElements.get(block.id);
+            if (!el) {
+                el = document.createElement('div');
+                el.dataset.blockId = block.id;
+                el.textContent = block.id===0 ? '🚗' : (block.w>block.h ? '◀▶' : '▲▼');
+                blockElements.set(block.id, el);
+                container.appendChild(el);
+            }
+            el.className = 'block ' + block.color;
+            if (selectedId === block.id) el.classList.add('selected');
+            el.style.width = (block.w*cs)+'px';
+            el.style.height = (block.h*cs)+'px';
+            el.style.borderRadius = Math.min(10, cs*0.18)+'px';
+            el.style.setProperty('--tx', (block.x*cs)+'px');
+            el.style.setProperty('--ty', (block.y*cs)+'px');
+        });
+        const red = blocks.find(b => b.id===0);
+        if (red && red.x===GOAL_X && !gameOver) triggerWin();
+    }
+
+    function setSelectedBlock(id) { if(gameOver) return; selectedId=id; render(); }
+    function selectBlock(id) { if(gameOver) return; selectedId=(selectedId===id)?null:id; render(); }
+
+    function tryMove(dx, dy) {
+        if (gameOver || LEVELS.length === 0) return false;
+        if (selectedId === null) { selectBlock(0); setTimeout(()=>tryMove(dx,dy),30); return false; }
+        const block = blocks.find(b => b.id===selectedId);
+        if (!block) return false;
+        const isH = block.w > block.h;
+        if (isH && dy!==0) return false;
+        if (!isH && dx!==0) return false;
+        const nx=block.x+dx, ny=block.y+dy;
+        if (nx<0||nx+block.w>G||ny<0||ny+block.h>G) return false;
+        for(let i=0;i<block.w;i++) for(let j=0;j<block.h;j++) grid[block.x+i][block.y+j]=-1;
+        let ok=true;
+        for(let i=0;i<block.w&&ok;i++) for(let j=0;j<block.h&&ok;j++) if(grid[nx+i][ny+j]!==-1) ok=false;
+        if(!ok){for(let i=0;i<block.w;i++)for(let j=0;j<block.h;j++)grid[block.x+i][block.y+j]=block.id;return false;}
+        block.x=nx;block.y=ny;
+        for(let i=0;i<block.w;i++)for(let j=0;j<block.h;j++)grid[nx+i][ny+j]=block.id;
+        steps++; updateUI(); render(); return true;
+    }
+
+    function triggerWin() { gameOver=true; winStepsSpan.textContent=steps; winOverlay.classList.add('show'); selectedId=null; render(); }
+    function updateUI() {
+        container.classList.toggle('generating', LEVELS.length === 0);
+        if (!LEVELS.length) {
+            levelDisplay.textContent = '生成中...';
+            stepSpan.textContent = '';
+            return;
+        }
+        levelDisplay.textContent=`第 ${currentLevel+1} / ${LEVELS.length} 关`;
+        stepSpan.textContent=steps+' 步';
+    }
+
+    // --- Touch event handlers (drag-to-move) ---
+    // Block-specific touch handlers
+    function handleBlockTouchStart(e, blockId) {
+        if (gameOver) return;
+        const touch = e.touches[0];
+        touchState.startX = touch.clientX;
+        touchState.startY = touch.clientY;
+        touchState.lastX = touch.clientX;
+        touchState.lastY = touch.clientY;
+        touchState.startTime = Date.now();
+        touchState.moved = false;
+        touchState.swiped = false;
+        touchState.handled = false;
+        touchState.dragging = false;
+        touchState.targetBlockId = blockId;
+
+        // Select the block immediately for visual feedback
+        setSelectedBlock(blockId);
+        e.preventDefault();
+    }
+
+    function handleBlockTouchMove(e, blockId) {
+        if (gameOver) return;
+        if (touchState.targetBlockId !== blockId) return;
+        e.preventDefault(); // Always prevent scroll during drag
+
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchState.lastX;
+        const dy = touch.clientY - touchState.lastY;
+        const totalDx = touch.clientX - touchState.startX;
+        const totalDy = touch.clientY - touchState.startY;
+        const absTotalDx = Math.abs(totalDx);
+        const absTotalDy = Math.abs(totalDy);
+
+        // Start dragging after moving more than 10 pixels
+        if (!touchState.dragging && (absTotalDx > 10 || absTotalDy > 10)) {
+            touchState.dragging = true;
+            touchState.moved = true;
+            touchState.swiped = true;
+        }
+
+        if (touchState.dragging) {
+            const cs = getCellSize();
+            const threshold = cs * 0.4; // Move when dragged 40% of a cell
+
+            // Try to move in the primary direction
+            if (absTotalDx > absTotalDy) {
+                // Horizontal movement
+                if (Math.abs(dx) > threshold) {
+                    const dir = dx > 0 ? 1 : -1;
+                    if (tryMove(dir, 0)) {
+                        touchState.lastX = touch.clientX;
+                        touchState.lastY = touch.clientY;
+                    }
+                }
+            } else {
+                // Vertical movement
+                if (Math.abs(dy) > threshold) {
+                    const dir = dy > 0 ? 1 : -1;
+                    if (tryMove(0, dir)) {
+                        touchState.lastX = touch.clientX;
+                        touchState.lastY = touch.clientY;
+                    }
+                }
+            }
+        }
+    }
+
+    function handleBlockTouchEnd(e, blockId) {
+        if (gameOver) return;
+        touchState.handled = true;
+        touchState.dragging = false;
+        // Reset handled flag after a short delay so the synthetic click event is suppressed
+        setTimeout(() => { touchState.handled = false; }, 400);
+    }
+
+    // Container-level touch handlers (fallback)
+    function handleTouchStart(e) {
+        if (gameOver) return;
+        const touch = e.touches[0];
+        touchState.startX = touch.clientX;
+        touchState.startY = touch.clientY;
+        touchState.lastX = touch.clientX;
+        touchState.lastY = touch.clientY;
+        touchState.startTime = Date.now();
+        touchState.moved = false;
+        touchState.swiped = false;
+        touchState.handled = false;
+        touchState.dragging = false;
+
+        touchState.targetBlockId = null;
+        let touchedBlock = e.target instanceof Element ? e.target.closest('.block') : null;
+        if (!touchedBlock) {
+            const pointTarget = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchedBlock = pointTarget instanceof Element ? pointTarget.closest('.block') : null;
+        }
+        if (touchedBlock && container.contains(touchedBlock)) {
+            touchState.targetBlockId = Number(touchedBlock.dataset.blockId);
+        } else {
+            // Fallback for browsers that report the board instead of the block as target.
+            const rect = container.getBoundingClientRect();
+            const px = touch.clientX - rect.left;
+            const py = touch.clientY - rect.top;
+            const cs = getCellSize();
+            const cx = Math.floor(px / cs);
+            const cy = Math.floor(py / cs);
+            if (cx >= 0 && cx < G && cy >= 0 && cy < G && grid[cx][cy] !== -1) {
+                touchState.targetBlockId = grid[cx][cy];
+            }
+        }
+        if (touchState.targetBlockId !== null) {
+            setSelectedBlock(touchState.targetBlockId);
+        }
+    }
+
+    function handleTouchMove(e) {
+        if (gameOver) return;
+        if (touchState.targetBlockId === null) return;
+        e.preventDefault(); // Always prevent scroll during drag
+
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchState.lastX;
+        const dy = touch.clientY - touchState.lastY;
+        const totalDx = touch.clientX - touchState.startX;
+        const totalDy = touch.clientY - touchState.startY;
+        const absTotalDx = Math.abs(totalDx);
+        const absTotalDy = Math.abs(totalDy);
+
+        // Start dragging after moving more than 10 pixels
+        if (!touchState.dragging && (absTotalDx > 10 || absTotalDy > 10)) {
+            touchState.dragging = true;
+            touchState.moved = true;
+            touchState.swiped = true;
+        }
+
+        if (touchState.dragging) {
+            const cs = getCellSize();
+            const threshold = cs * 0.4; // Move when dragged 40% of a cell
+
+            // Try to move in the primary direction
+            if (absTotalDx > absTotalDy) {
+                // Horizontal movement
+                if (Math.abs(dx) > threshold) {
+                    const dir = dx > 0 ? 1 : -1;
+                    if (tryMove(dir, 0)) {
+                        touchState.lastX = touch.clientX;
+                        touchState.lastY = touch.clientY;
+                    }
+                }
+            } else {
+                // Vertical movement
+                if (Math.abs(dy) > threshold) {
+                    const dir = dy > 0 ? 1 : -1;
+                    if (tryMove(0, dir)) {
+                        touchState.lastX = touch.clientX;
+                        touchState.lastY = touch.clientY;
+                    }
+                }
+            }
+        }
+    }
+
+    function handleTouchEnd(e) {
+        if (gameOver) return;
+        touchState.handled = true;
+        touchState.dragging = false;
+        // Reset handled flag after a short delay so the synthetic click event is suppressed
+        setTimeout(() => { touchState.handled = false; }, 400);
+    }
+
+    function loadFallbackLevels() {
+        if (LEVELS.length || FALLBACK_LEVELS.length === 0) return;
+        LEVELS = FALLBACK_LEVELS.map(cloneBlocks);
+        currentLevel = 0;
+        loadLevel(0);
+    }
+
+    function acceptGeneratedLevel(level) {
+        LEVELS.push(level);
+        if (LEVELS.length === 1) loadLevel(0);
+        else updateUI();
+    }
+
+    function startMainThreadGeneration(seed) {
+        if (!generatorApi.generateLevels) {
+            loadFallbackLevels();
+            return;
+        }
+        generatorApi.generateLevels(
+            seed,
+            level => acceptGeneratedLevel(level),
+            count => { if (count === 0) loadFallbackLevels(); }
+        );
+    }
+
+    function startRandomGeneration() {
+        const seed = Date.now() + Math.floor(Math.random() * 2147483647);
+        if (typeof Worker === 'undefined') {
+            startMainThreadGeneration(seed);
+            return;
+        }
+        try {
+            if (!generatorWorkerUrl) {
+                generatorWorkerUrl = URL.createObjectURL(new Blob([generatorSource], {type:'text/javascript'}));
+            }
+            levelWorker = new Worker(generatorWorkerUrl);
+            levelWorker.onmessage = event => {
+                const data = event.data || {};
+                if (data.type === 'level') acceptGeneratedLevel(data.level);
+                else if (data.type === 'done' && LEVELS.length === 0) startMainThreadGeneration(seed + 1);
+            };
+            levelWorker.onerror = () => {
+                if (levelWorker) levelWorker.terminate();
+                levelWorker = null;
+                if (LEVELS.length === 0) startMainThreadGeneration(seed + 1);
+            };
+            levelWorker.postMessage({seed});
+        } catch (error) {
+            startMainThreadGeneration(seed + 1);
+        }
+    }
+
+    // Events
+    document.addEventListener('keydown', e => {
+        let dx=0,dy=0;
+        if(e.key==='ArrowUp') dy=-1; else if(e.key==='ArrowDown') dy=1;
+        else if(e.key==='ArrowLeft') dx=-1; else if(e.key==='ArrowRight') dx=1;
+        else return; e.preventDefault(); tryMove(dx,dy);
+    });
+    document.querySelectorAll('.ctrl-btn').forEach(btn => {
+        btn.addEventListener('click', () => tryMove(+btn.dataset.dx, +btn.dataset.dy));
+    });
+    document.getElementById('resetBtn').addEventListener('click', resetCurrent);
+    document.getElementById('nextBtn').addEventListener('click', nextLevel);
+    document.getElementById('prevBtn').addEventListener('click', prevLevel);
+    document.getElementById('nextLevelBtn').addEventListener('click', nextLevel);
+    container.addEventListener('click', e => {
+        const blockEl = e.target.closest('.block');
+        if (blockEl) {
+            if (!gameOver && !touchState.handled) selectBlock(Number(blockEl.dataset.blockId));
+            return;
+        }
+        if(e.target===container && !touchState.handled){selectedId=null;render();}
+    });
+    window.addEventListener('resize', render);
+
+    // Touch event bindings on gridContainer (passive: false to allow preventDefault)
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+    // Generate a fresh, verified set for each page load.
+    updateUI();
+    startRandomGeneration();
+})();
+</script>
+</body>
+</html>
