@@ -117,6 +117,12 @@ header h1{font-size:20px;letter-spacing:1px;text-shadow:0 1px 0 #fff;white-space
 .tile.locked .tile-inner::before{content:'⛓';color:#59616A;background:rgba(93,104,113,.16);}
 .tile.frozen .tile-inner::before{content:'❄';color:#2F9FC2;background:rgba(166,231,247,.32);}
 .tile.locked .tile-inner,.tile.frozen .tile-inner{filter:brightness(.92) saturate(.9);}
+.special-progress{
+  position:absolute;left:50%;bottom:6%;z-index:4;transform:translateX(-50%);
+  padding:1px 5px;border-radius:999px;background:rgba(50,30,10,.66);
+  color:#fff;font-size:clamp(9px,2.8vw,14px);font-weight:800;line-height:1.2;
+  pointer-events:none;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.25);
+}
 #board.dual-zone::after{content:'';position:absolute;top:3%;bottom:3%;left:50%;border-left:2px dashed rgba(122,74,33,.32);pointer-events:none;z-index:8000;}
 @media (hover:hover){
   .tile.uncovered{cursor:pointer;}
@@ -180,6 +186,10 @@ header h1{font-size:20px;letter-spacing:1px;text-shadow:0 1px 0 #fff;white-space
   0%,100%{transform:scale(1);}50%{transform:scaleX(.12) scaleY(1.06) rotate(6deg);}
 }
 .tile.shuffling .tile-inner{animation:shuff .4s ease;}
+@keyframes specialHit{0%,100%{transform:scale(1);}45%{transform:scale(.9) rotate(-3deg);}70%{transform:scale(1.04) rotate(2deg);}}
+@keyframes specialBreak{0%{filter:brightness(.92) saturate(.9);}55%{filter:brightness(1.3) saturate(1.15);transform:scale(1.08);}100%{filter:none;transform:scale(1);}}
+.tile.special-hit .tile-inner{animation:specialHit .32s ease;}
+.tile.special-breaking .tile-inner{animation:specialBreak .42s ease;}
 @keyframes fly{to{opacity:0;transform:translateY(24%) scale(.5);}}
 .tile.fly{z-index:1000;pointer-events:none;opacity:0;}
 .tile-flight{
@@ -350,12 +360,12 @@ var LEVELS = [
   { sets:4, counts:[9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9],             layers:4 },
   { sets:5, counts:[12,12,12,12,12,12,12,12,12,12,12,12,9,9,9,9],  layers:5 },
   { sets:6, counts:[9,9,9,9,9,9,9,9,18,18,18,18,18,18,18,18],     layers:6 },
-  { sets:6, counts:[12,12,12,12,12,12,12,12,12,12,12,12,12,12,21,21], layers:6, wild:6, special:'chain-clear', chainCount:14 },
-  { sets:6, counts:[15,15,15,15,15,12,12,12,12,12,12,12,12,12,12,12], layers:6, wild:9, special:'chain-neighbor', chainCount:18 },
-  { sets:6, counts:[15,15,15,15,15,15,12,12,12,12,12,12,12,12,12,12], layers:6, wild:6, special:'ice-neighbor', iceCount:18, iceNeed:1 },
-  { sets:6, counts:[15,15,15,15,15,15,12,12,12,12,12,12,12,12,12,12], layers:6, wild:6, special:'ice-neighbor', iceCount:24, iceNeed:2 },
+  { sets:6, counts:[12,12,12,12,12,12,12,12,12,12,12,12,12,12,21,21], layers:6, wild:6, special:'chain-clear', chainCount:14, clearEvery:2 },
+  { sets:6, counts:[15,15,15,15,15,12,12,12,12,12,12,12,12,12,12,12], layers:6, wild:9, special:'chain-neighbor', chainCount:18, chainNeed:2 },
+  { sets:6, counts:[15,15,15,15,15,15,12,12,12,12,12,12,12,12,12,12], layers:6, wild:6, special:'ice-neighbor', iceCount:18, iceNeed:2 },
+  { sets:6, counts:[15,15,15,15,15,15,12,12,12,12,12,12,12,12,12,12], layers:6, wild:6, special:'ice-neighbor', iceCount:24, iceNeed:3 },
   { sets:6, counts:[12,12,12,12,12,12,12,12,12,12,12,12,12,12,21,21], layers:6, wild:6, special:'teleport', reserve:12, teleports:4 },
-  { sets:6, counts:[15,15,15,15,15,12,12,12,12,12,12,12,12,12,12,9], layers:6, wild:9, special:'teleport', reserve:18, teleports:6 }
+  { sets:6, counts:[15,15,15,15,15,12,12,12,12,12,12,12,12,12,12,12], layers:6, wild:9, special:'teleport', reserve:18, teleports:6 }
 ];
 // 第3、4关仅暂时关闭入口，不删除原关卡配置与编号。
 var TEMP_DISABLED_LEVELS = {3:true,4:true};
@@ -368,7 +378,7 @@ var boardWrap = $('boardWrap'), board = $('board'), trayEl = $('tray'), trayInne
 var state = {
   tiles:[], tray:[], trayTiles:[], coverers:[], over:false,
   trayCap:TRAY_CAP, shuffles:SHUFFLE_MAX, clears:CLEAR_MAX, gen:0,
-  level:1, started:false, special:null, pendingPick:null
+  level:1, started:false, special:null, safeOrder:null, pendingPick:null
 };
 
 /* ================= 通用工具 ================= */
@@ -382,6 +392,26 @@ function shuffleArray(a){
 function tileEl(id){ return document.getElementById('tile-'+id); }
 function setKind(t,k){ t.kind=k; }
 function foodSymbolId(kind){ return kind===9 ? 'food-9-fries' : (kind===WILD_KIND ? 'food-wild' : 'food-'+kind); }
+function specialProgressText(t){
+  if(!t || (!t.locked && !t.frozen)) return '';
+  var need=Math.max(1,t.specialNeed||1), progress=t.specialProgress||0;
+  if(state.special && state.special.type==='chain-clear') progress=state.special.clearRounds||0;
+  return Math.min(progress,need)+'/'+need;
+}
+function specialProgressMarkup(t){
+  var text=specialProgressText(t);
+  return text ? '<span class="special-progress">'+text+'</span>' : '';
+}
+function tileFaceMarkup(t){
+  return '<svg viewBox="0 0 1024 1024"><use href="#'+foodSymbolId(t.kind)+'"/></svg>'+specialProgressMarkup(t);
+}
+function animateSpecialTile(t,breaking){
+  var elm=tileEl(t.id);
+  if(!elm) return;
+  var cls=breaking?'special-breaking':'special-hit';
+  elm.classList.remove(cls); void elm.offsetWidth; elm.classList.add(cls);
+  setTimeout(function(){ if(elm) elm.classList.remove(cls); },breaking?440:340);
+}
 
 /* ================= 关卡生成 ================= */
 // 每关 sets 组，每组按 LAYER_RECIPES[level.layers] 的配方自下而上叠放（每组 36 块），组与组之间层层叠压
@@ -618,6 +648,7 @@ function assignTriples(tiles, multiset){
   }
   shuffleArray(groups);
   var order = playableOrder(tiles);
+  state.safeOrder=order.slice();
   order.forEach(function(t,i){ setKind(t, groups[(i/3)|0]); });
 }
 function assignSpecialGroups(order){
@@ -640,6 +671,14 @@ function tileNeighbors(t){
     return other!==t && !other.reserve && Math.abs(other.x-t.x)<=1.05 && Math.abs(other.y-t.y)<=1.05;
   });
 }
+function priorNeighborGroupCount(order, index, target){
+  var groups={};
+  tileNeighbors(target).forEach(function(other){
+    var p=order.indexOf(other);
+    if(p>=0 && p<index) groups[Math.floor(p/3)]=true;
+  });
+  return Object.keys(groups).length;
+}
 function selectDistributedRouteTiles(order, count, need){
   var picks=[], first=12, last=Math.max(first,order.length-14), span=Math.max(1,last-first);
   for(var slot=0;slot<count;slot++){
@@ -649,7 +688,7 @@ function selectDistributedRouteTiles(order, count, need){
       for(var q=0;q<indexes.length;q++){
         var i=indexes[q], t=order[i];
         if(!t || picks.indexOf(t)>=0) continue;
-        if(need && tileNeighbors(t).filter(function(other){ return order.indexOf(other)<i; }).length<need) continue;
+        if(need && priorNeighborGroupCount(order,i,t)<need) continue;
         found=t; break;
       }
     }
@@ -662,21 +701,22 @@ function configureNeighborBlocks(order, prop, count, need){
   if(picks.length<count){
     for(var i=6;i<order.length && picks.length<count;i++){
       var fallback=order[i];
-      if(picks.indexOf(fallback)>=0 || fallback.kind===WILD_KIND) continue;
+      if(picks.indexOf(fallback)>=0 || fallback.kind===WILD_KIND || priorNeighborGroupCount(order,i,fallback)<need) continue;
       picks.push(fallback);
     }
   }
   picks.slice(0,count).forEach(function(t){
-    t[prop]=true; t.specialNeed=need; t.specialType=prop; t.specialUnlocked=false;
+    t[prop]=true; t.specialNeed=need; t.specialProgress=0; t.specialType=prop; t.specialUnlocked=false;
   });
 }
 function setupSpecialLevel(level){
   state.special=null;
   if(state.level<6 || !level.special) return;
-  state.special={type:level.special, clearCount:0, moves:0, refillPending:false,
+  state.special={type:level.special, clearCount:0, clearRounds:0, clearEvery:level.clearEvery||2,
+    moves:0, refillPending:false,
     teleportsLeft:level.teleports||0, teleportUses:0, reserveTiles:[]};
   state.tiles.forEach(function(t){
-    t.locked=false; t.frozen=false; t.specialNeed=0; t.specialType='';
+    t.locked=false; t.frozen=false; t.specialNeed=0; t.specialProgress=0; t.specialType='';
     t.specialUnlocked=false; t.reserve=false; t.zone=(t.x>=2.5?1:0);
   });
   var active=state.tiles.slice();
@@ -692,25 +732,31 @@ function setupSpecialLevel(level){
   state.coverers=buildCoverers(state.tiles);
   // 先固定一条完整的可取牌路线和对应三消分组，再只在路线后段叠加特殊状态。
   var order=playableOrder(active);
+  state.safeOrder=order.slice();
   state.special.safeOrder=order.slice();
   state.special.safePrefix=order.slice(0,12);
-  assignSpecialGroups(order.concat(state.special.reserveTiles));
+  // 传送预留牌也沿同一条完整安全路线按三张一组分配，确保补牌后
+  // 总牌池仍然可三消；active 路线用于当前棋盘，fullSafeOrder 用于
+  // 含预留牌的整局通关检查。
+  var fullOrder=order.concat(state.special.reserveTiles);
+  state.special.fullSafeOrder=fullOrder.slice();
+  assignSpecialGroups(fullOrder);
   if(level.special==='chain-clear'){
     state.special.unlockQueue=selectDistributedRouteTiles(order,level.chainCount||12,0);
     state.special.unlockCursor=0;
-    state.special.unlockQueue.forEach(function(t){ t.locked=true; t.specialNeed=1; t.specialType='locked'; });
+    state.special.unlockQueue.forEach(function(t){ t.locked=true; t.specialNeed=state.special.clearEvery; t.specialProgress=0; t.specialType='locked'; });
   }else if(level.special==='chain-neighbor'){
-    configureNeighborBlocks(order,'locked',level.chainCount||16,1);
+    configureNeighborBlocks(order,'locked',level.chainCount||16,level.chainNeed||2);
   }else if(level.special==='ice-neighbor'){
     configureNeighborBlocks(order,'frozen',level.iceCount||16,level.iceNeed||1);
   }
 }
 function validateSpecialSetup(level){
-  if(state.level<6 || !state.special) return true;
+  if(state.level<6 || !state.special) return validateClearUseScenarios();
   var counts={};
   state.tiles.forEach(function(t){ counts[t.kind]=(counts[t.kind]||0)+1; });
   for(var k=0;k<=WILD_KIND;k++) if((counts[k]||0)%3!==0) return false;
-  var order=state.special.safeOrder||[], position={};
+  var order=state.special.safeOrder||[], fullOrder=state.special.fullSafeOrder||order, position={};
   order.forEach(function(t,i){ position[t.id]=i; });
   for(var i=0;i<order.length;i++){
     var t=order[i], coverers=state.coverers[t.id]||[];
@@ -721,9 +767,15 @@ function validateSpecialSetup(level){
     if(t.locked || t.frozen){
       if(t.specialType==='locked' && state.special.type==='chain-clear'){
         var queueIndex=state.special.unlockQueue.indexOf(t);
-        if(queueIndex<0 || Math.floor(i/3)*2<queueIndex+1) return false;
+        var groupsBefore=Math.floor(i/3);
+        if(queueIndex<0 || groupsBefore<(queueIndex+1)*(state.special.clearEvery||2)) return false;
       }else{
-        var earlier=tileNeighbors(t).filter(function(other){ return position[other.id]!==undefined && position[other.id]<i; }).length;
+        var earlierGroups={};
+        tileNeighbors(t).forEach(function(other){
+          var prior=position[other.id];
+          if(prior!==undefined && prior<i) earlierGroups[Math.floor(prior/3)]=true;
+        });
+        var earlier=Object.keys(earlierGroups).length;
         if(earlier<t.specialNeed) return false;
       }
     }
@@ -731,14 +783,22 @@ function validateSpecialSetup(level){
   if(state.special.type==='teleport'){
     if(state.special.reserveTiles.length%3!==0) return false;
     if(state.special.reserveTiles.length/3>level.teleports) return false;
+    if(!validationRouteCanFinish(state.tiles,fullOrder,[],state.trayCap||TRAY_CAP)) return false;
+  }else{
+    // 锁链/冰冻关使用与实际规则一致的回放器确认：按每回合最多
+    // 解锁/解冻 1 个的节奏，整条安全路线仍能完成。无效布局会重新生成。
+    if(!simulateValidationRoute(validationTiles(),order,[],state.trayCap||TRAY_CAP,null)) return false;
   }
-  return order.length===state.tiles.filter(function(t){ return !t.removed; }).length;
+  // 特殊状态已经在上面的规则检查中验证解锁路径；清空场景单独验证
+  // “暂存牌移出后原位恢复”，不重复回放整局，避免把清空误当成额外取牌。
+  return order.length===state.tiles.filter(function(t){ return !t.removed; }).length && validateClearUseScenarios();
 }
 function specialBlocked(t){ return !!(t.locked || t.frozen); }
 function recheckSpecialTripleOpportunity(){
   if(!state.special || state.over) return false;
   // 特殊状态变化后只重新计算遮挡和可点击状态；不自动交换水果。
   state.coverers=buildCoverers(state.tiles);
+  syncTileKinds();
   refreshStates();
   return hasTripleMove();
 }
@@ -748,22 +808,55 @@ function handleSpecialProgress(picked, cleared){
   sp.moves++;
   var stateChanged=false;
   if(sp.type==='chain-clear'){
-    sp.clearCount+=(cleared||[]).length;
-    // 每完成一次三消只解开一张，锁链会延续到中后局而不是开局迅速耗尽。
-    var unlockLimit=Math.min(sp.clearCount,sp.unlockQueue?sp.unlockQueue.length:0);
-    while(sp.unlockQueue && sp.unlockCursor<unlockLimit){
-      var next=sp.unlockQueue[sp.unlockCursor++]; next.locked=false; next.specialUnlocked=true;
-      stateChanged=true;
-      toast('三消成功，部分锁链已解开');
-    }
-  }else if(sp.type==='chain-neighbor' || sp.type==='ice-neighbor'){
-    var unlocked=0;
-    state.tiles.forEach(function(t){
-      if((t.locked||t.frozen) && tileNeighbors(t).filter(function(n){ return n.removed; }).length>=t.specialNeed){
-        t.locked=false; t.frozen=false; t.specialUnlocked=true; unlocked++;
+    // 一次点击即使连续清掉多组三消，也只计为一个有效三消回合。
+    if((cleared||[]).length){
+      sp.clearCount++;
+      sp.clearRounds=sp.clearCount%sp.clearEvery;
+      if(sp.clearCount%sp.clearEvery===0 && sp.unlockQueue && sp.unlockCursor<sp.unlockQueue.length){
+        var next=sp.unlockQueue[sp.unlockCursor++];
+        next.locked=false; next.specialUnlocked=true; next.specialProgress=next.specialNeed;
+        animateSpecialTile(next,true);
+        stateChanged=true;
+        toast('完成 '+sp.clearEvery+' 次三消，锁链解锁 1 个');
       }
+    }
+    /* 不在同一次点击中批量解锁，确保锁链会贯穿中后段。 */
+  }else if(sp.type==='chain-neighbor' || sp.type==='ice-neighbor'){
+    // 同一次点击中的多组三消合并处理：同一个特殊方块最多增加 1 点进度。
+    var touched={};
+    (cleared||[]).forEach(function(group){
+      (group.tileIds||[]).forEach(function(tileId){ touched[tileId]=true; });
     });
-    if(unlocked){ stateChanged=true; toast((sp.type==='ice-neighbor'?'相邻牌已消除，冰层解冻 ':'相邻牌已消除，锁链解开 ')+unlocked+' 个'); }
+    var ready=[];
+    state.tiles.forEach(function(t){
+      if(!t.locked && !t.frozen || t.reserve) return;
+      var neighbors=tileNeighbors(t), hit=false;
+      neighbors.forEach(function(n){ if(touched[n.id]) hit=true; });
+      if(hit){
+        t.specialProgress=Math.min(t.specialNeed,(t.specialProgress||0)+1);
+        animateSpecialTile(t,false);
+        stateChanged=true;
+      }
+      if((t.specialProgress||0)>=t.specialNeed) ready.push(t);
+    });
+    // 进度可同时积累，但每个有效三消回合最多真正解锁 1 个特殊方块。
+    ready.sort(function(a,b){
+      var ao=state.special.safeOrder?state.special.safeOrder.indexOf(a):-1;
+      var bo=state.special.safeOrder?state.special.safeOrder.indexOf(b):-1;
+      var av=isOccluded(a)?1:0, bv=isOccluded(b)?1:0;
+      return av-bv || ao-bo || a.id-b.id;
+    });
+    if(ready.length){
+      var unlocked=ready[0];
+      unlocked.locked=false; unlocked.frozen=false; unlocked.specialUnlocked=true;
+      animateSpecialTile(unlocked,true);
+      stateChanged=true;
+      toast((sp.type==='ice-neighbor'?'冰层裂开，解冻 1 个方块':'相邻三消后，锁链解开 1 个方块'));
+    }
+  }
+  /* 特殊方块不因一次三消中的多张相邻牌而批量完成。 */
+  if(sp.type==='chain-clear' && stateChanged){
+    // chain-clear 的进度徽标由 clearRounds 统一显示。
   }
   if(sp.type==='teleport' && (cleared||[]).length && sp.teleportsLeft>0 && !sp.refillPending){
     sp.refillPending=true;
@@ -819,12 +912,233 @@ function simWouldClear(counts, kind){
   var result=simClearOne(probe);
   return result;
 }
+// 判断一组牌能否最终按三消规则清完。普通牌余数为 1 需要两张万能牌，余数为 2 需要一张万能牌。
+function isResolvableKinds(kinds){
+  var counts={}, wild=0, wildNeed=0;
+  (kinds||[]).forEach(function(kind){
+    if(kind===WILD_KIND) wild++;
+    else counts[kind]=(counts[kind]||0)+1;
+  });
+  for(var k=0;k<FOOD_N;k++){
+    var remainder=(counts[k]||0)%3;
+    if(remainder===1) wildNeed+=2;
+    else if(remainder===2) wildNeed++;
+  }
+  return wild>=wildNeed && (wild-wildNeed)%3===0;
+}
+// 判断所有尚存牌能否最终按三消规则清完。
+function isResolvableFruitPool(tiles){
+  return isResolvableKinds((tiles||[]).map(function(t){ return t.kind; }));
+}
+function getStaticCoverers(tiles,index){
+  var target=tiles[index], blockers=[];
+  tiles.forEach(function(other,j){
+    // 验证时忽略临时 removed 标记，只建立固定的几何遮挡关系；
+    // 当前是否已经取走由模拟器自己的 removed 状态判断。
+    var sameLayerAbove=other.layer===target.layer && j>index;
+    if(other===target || other.layer<target.layer || (other.layer===target.layer && !sameLayerAbove)) return;
+    var area=overlapArea(target,other);
+    if(area>=OCCLUDE_RATIO) blockers.push({ id:j, layer:other.layer, area:area });
+  });
+  blockers.sort(function(a,b){ return a.layer-b.layer || b.area-a.area; });
+  return blockers.slice(0,MAX_COVERERS).map(function(item){ return item.id; });
+}
+function buildStaticCoverers(tiles){
+  return tiles.map(function(_,i){ return getStaticCoverers(tiles,i); });
+}
+function validationTiles(){
+  return state.tiles.filter(function(t){ return !t.reserve; }).map(function(t){
+    var copy={};
+    Object.keys(t).forEach(function(key){ copy[key]=t[key]; });
+    return copy;
+  });
+}
+function markValidationRemoved(tiles, ids, removed){
+  (ids||[]).forEach(function(id){
+    var tile=tiles.filter(function(t){ return t.id===id; })[0];
+    if(tile) tile.removed=removed;
+  });
+}
+function validationRouteCanFinish(tiles, order, trayFruits, trayCap){
+  var counts={}, wild=0, len=(trayFruits||[]).length;
+  (trayFruits||[]).forEach(function(kind){ counts[kind]=(counts[kind]||0)+1; });
+  for(var i=0;i<order.length;i++){
+    var kind=order[i].kind;
+    counts[kind]=(counts[kind]||0)+1; len++;
+    if(simClearOne(counts)) len-=3;
+    if(len>=trayCap) return false;
+  }
+  return len===0;
+}
+function validationRoutePrefixCanFinish(tiles,order,prefixCount,trayCap){
+  var copies=tiles.map(function(t){
+    var copy={}; Object.keys(t).forEach(function(key){ copy[key]=t[key]; });
+    return copy;
+  });
+  var prefix=order.slice(0,prefixCount);
+  return simulateValidationRoute(copies,prefix,[],trayCap,null);
+}
+function validationNeighbors(tiles,target){
+  return tiles.filter(function(other){
+    return other!==target && !other.reserve && Math.abs(other.x-target.x)<=1.05 && Math.abs(other.y-target.y)<=1.05;
+  });
+}
+function validationClearTriples(trayKinds,trayIds){
+  var cleared=[];
+  for(;;){
+    var counts={}, wild=[];
+    trayKinds.forEach(function(v,i){
+      if(v===WILD_KIND) wild.push(i); else counts[v]=(counts[v]||[]).concat(i);
+    });
+    var idxs=null, matchKind=null;
+    for(var k=0;k<FOOD_N;k++){
+      var same=counts[k]||[];
+      if(same.length>=3){ idxs=same.slice(0,3); matchKind=k; break; }
+      if(same.length>=2 && wild.length>=1){ idxs=same.slice(0,2).concat(wild[0]); matchKind=k; break; }
+      if(same.length>=1 && wild.length>=2){ idxs=same.slice(0,1).concat(wild.slice(0,2)); matchKind=k; break; }
+    }
+    if(!idxs && wild.length>=3){ idxs=wild.slice(0,3); matchKind=WILD_KIND; }
+    if(!idxs) break;
+    idxs.sort(function(a,b){ return a-b; });
+    cleared.push({kind:matchKind, tileIds:idxs.map(function(i){ return trayIds[i]; })});
+    for(var i=idxs.length-1;i>=0;i--){ trayKinds.splice(idxs[i],1); trayIds.splice(idxs[i],1); }
+  }
+  return cleared;
+}
+function simulateValidationRoute(tiles,order,trayFruits,trayCap,clearPlan){
+  var byId={}, coverers=buildStaticCoverers(tiles), coverersById={};
+  tiles.forEach(function(t,i){ byId[t.id]=t; coverersById[t.id]=coverers[i]; });
+  var removed={}, trayKinds=(trayFruits||[]).slice(), trayIds=[];
+  var specialInfo=null;
+  var routePosition={};
+  var routeForPosition=(clearPlan&&clearPlan.routeOrder)||order||[];
+  routeForPosition.forEach(function(t,i){ routePosition[t.id]=i; });
+  tiles.forEach(function(t){ removed[t.id]=!!t.removed; t.removed=!!t.removed; });
+  (trayFruits||[]).forEach(function(_,i){ trayIds.push('tray-'+i); });
+  if(state.special){
+    specialInfo={type:state.special.type, clearCount:0, clearEvery:state.special.clearEvery||2,
+      unlockCursor:0, unlockIds:(state.special.unlockQueue||[]).map(function(t){ return t.id; })};
+  }
+  function simOccluded(t){
+    return (coverersById[t.id]||[]).some(function(id){ return !removed[tiles[id].id]; });
+  }
+  function canPick(t){
+    if(!t || removed[t.id] || t.locked || t.frozen) return false;
+    var blockers=coverersById[t.id]||[];
+    return blockers.every(function(id){ return removed[tiles[id].id]; });
+  }
+  function applySpecialProgress(cleared){
+    if(!specialInfo || !cleared.length) return;
+    var touched={};
+    cleared.forEach(function(group){ (group.tileIds||[]).forEach(function(id){ touched[id]=true; }); });
+    if(specialInfo.type==='chain-clear'){
+      specialInfo.clearCount++;
+      if(specialInfo.clearCount%specialInfo.clearEvery===0 && specialInfo.unlockCursor<specialInfo.unlockIds.length){
+        var unlockId=specialInfo.unlockIds[specialInfo.unlockCursor++], unlockTile=byId[unlockId];
+        if(unlockTile){ unlockTile.locked=false; unlockTile.specialUnlocked=true; unlockTile.specialProgress=unlockTile.specialNeed; }
+      }
+      return;
+    }
+    if(specialInfo.type!=='chain-neighbor' && specialInfo.type!=='ice-neighbor') return;
+    tiles.forEach(function(t){
+      if(t.reserve || (!t.locked && !t.frozen)) return;
+      var hit=validationNeighbors(tiles,t).some(function(n){ return !!touched[n.id]; });
+      if(hit) t.specialProgress=Math.min(t.specialNeed||1,(t.specialProgress||0)+1);
+    });
+    var ready=tiles.filter(function(t){ return !t.reserve && (t.locked||t.frozen) && (t.specialProgress||0)>=(t.specialNeed||1); });
+    ready.sort(function(a,b){
+      var av=simOccluded(a)?1:0, bv=simOccluded(b)?1:0;
+      return av-bv || (routePosition[a.id]||0)-(routePosition[b.id]||0) || a.id-b.id;
+    });
+    if(ready.length){ ready[0].locked=false; ready[0].frozen=false; ready[0].specialUnlocked=true; }
+  }
+  function pick(id){
+    var t=byId[id];
+    if(!canPick(t)) return false;
+    removed[id]=true; t.removed=true;
+    trayKinds.push(t.kind); trayIds.push(id);
+    var cleared=validationClearTriples(trayKinds,trayIds);
+    applySpecialProgress(cleared);
+    return trayKinds.length<trayCap;
+  }
+  function restore(ids){
+    // 清空只清掉当前卡槽，不会把已经三消的牌恢复回来；
+    // ids 是本次场景中实际留在卡槽里的牌。
+    (ids||[]).forEach(function(id){
+      var t=byId[id];
+      if(!t) return;
+      removed[id]=false; t.removed=false;
+      var idx=trayIds.indexOf(id);
+      if(idx>=0){ trayIds.splice(idx,1); trayKinds.splice(idx,1); }
+    });
+    // 清空道具会把卡槽全部清掉；验证场景中的 ids 就是当前卡槽牌。
+    trayKinds=[]; trayIds=[];
+  }
+  function playPrefix(prefix){
+    for(var pi=0;pi<prefix.length;pi++){
+      if(!pick(prefix[pi].id)) return false;
+    }
+    return true;
+  }
+  var actions=[];
+  order.forEach(function(t){ actions.push({pick:t.id}); });
+  if(clearPlan){
+    actions=[];
+    (clearPlan.before||[]).forEach(function(t){ actions.push({pick:t.id}); });
+    actions.push({clear:(clearPlan.restore||[]).map(function(t){ return t.id; })});
+    (clearPlan.after||[]).forEach(function(t){ actions.push({pick:t.id}); });
+  }
+  var lastClearIds=[];
+  for(var ai=0;ai<actions.length;ai++){
+    if(actions[ai].clear){ lastClearIds=actions[ai].clear; restore(lastClearIds); continue; }
+    // 清空后恢复的牌必须重新沿路线取一次；清空前已经消除的牌不会重复出现。
+    if(!pick(actions[ai].pick)) return false;
+  }
+  return tiles.every(function(t){ return t.reserve || removed[t.id]; }) && trayKinds.length===0;
+}
+// 生成关卡时模拟清空道具的真实状态：卡槽牌会从棋盘中暂时移出，
+// 清空后再恢复为可取牌。检查不同水果组合和多个中途清空节点，避免清空后残局失败。
+function validateClearUseScenarios(){
+  var active=validationTiles();
+  if(!active.length) return true;
+  // 普通关没有预先保存的安全路线，验证时临时生成一条真实可点击顺序；
+  // 不能直接按 tiles 数组顺序检查，否则会把正常牌面误判为不可通关。
+  var order=(state.special&&state.special.safeOrder)||state.safeOrder||playableOrder(active);
+  var cap=state.trayCap||TRAY_CAP;
+  var allKinds=active.map(function(t){ return t.kind; });
+  if(!isResolvableKinds(allKinds)) return false;
+  // 新特殊关使用预先生成的安全路线做逐步验证；旧关卡不改变原有
+  // 随机牌面判定，只验证清空的“移出/原位恢复”状态转换。
+  if(state.special){
+    if(!validationRouteCanFinish(active,order,[],cap)) return false;
+  }
+  // 在安全路线的多个节点回放清空：先取当前组中的 1/2 张牌，
+  // 清空卡槽把它们原位恢复，再从当前组三连继续；这会同时检查
+  // 卡槽容量、三消、锁链/冰冻进度以及特殊牌是否能继续取到。
+  var checkpoints=[0,3,6,9,15,24,36,54,72,96,128,160];
+  for(var ci=0;ci<checkpoints.length;ci++){
+    var completed=Math.min(checkpoints[ci],Math.max(0,order.length-3));
+    completed-=completed%3;
+    var pending=order.slice(completed,Math.min(completed+3,order.length));
+    for(var take=1;take<=Math.min(2,pending.length);take++){
+      var scenario=validationTiles();
+      var before=order.slice(0,completed+take);
+      var restore=pending.slice(0,take);
+      var after=order.slice(completed,order.length);
+      if(!simulateValidationRoute(scenario,before,[],cap,{
+        before:before, restore:restore, after:after, routeOrder:order
+      })) return false;
+    }
+  }
+  return true;
+}
 // 贪心模拟：判断当前食物分布能否通关（考虑初始槽内状态、万能牌与槽位容量）
 function simWinnable(tiles, trayFruits, trayCap){
   trayCap = trayCap || 7;
   var n=tiles.length;
-  var removed=new Array(n).fill(false);
-  var coverers=tiles.map(function(_,i){ return getCoverers(tiles,i); });
+  var removed=tiles.map(function(t){ return !!t.removed; });
+  // 统一使用固定几何遮挡关系，临时 removed 状态只由模拟器维护。
+  var coverers=buildStaticCoverers(tiles);
   var counts={};
   (trayFruits||[]).forEach(function(f){ counts[f]=(counts[f]||0)+1; });
   var len=(trayFruits||[]).length;
@@ -935,7 +1249,7 @@ function renderBoard(){
     d.style.setProperty('--sy',(fan[1]*fanScale+layerOffset)+'px');
     d.style.transform='translate(calc(var(--sx,0px) + var(--peek-x,0px)), calc(var(--sy,0px) + var(--peek-y,0px))) rotate('+((t.id%7)-3)+'deg)';
     d.style.setProperty('--d', Math.min(t.layer*2,30) + (t.id%3));   // 入场动画错开（封顶避免深层延迟过久）
-    d.innerHTML='<div class="tile-inner f'+t.kind+'"><svg viewBox="0 0 1024 1024"><use href="#'+foodSymbolId(t.kind)+'"/></svg></div>';
+    d.innerHTML='<div class="tile-inner f'+t.kind+'">'+tileFaceMarkup(t)+'</div>';
     (function(id){
       // 移动端只响应 pointerdown，避免方块移除后延迟 click 落到相邻方块。
       d.addEventListener('pointerdown', function(e){
@@ -962,7 +1276,7 @@ function renderTeleportBatch(batch){
     d.style.setProperty('--sy',(fan[1]*fanScale+layerOffset)+'px');
     d.style.transform='translate(var(--sx,0px),var(--sy,0px)) rotate('+((t.id%7)-3)+'deg)';
     d.style.setProperty('--d',0);
-    d.innerHTML='<div class="tile-inner f'+t.kind+'"><svg viewBox="0 0 1024 1024"><use href="#'+foodSymbolId(t.kind)+'"/></svg></div>';
+    d.innerHTML='<div class="tile-inner f'+t.kind+'">'+tileFaceMarkup(t)+'</div>';
     (function(id){ d.addEventListener('pointerdown',function(e){ e.preventDefault(); e.stopPropagation(); onTileDown(e,id); },{passive:false}); })(t.id);
     board.appendChild(d);
   });
@@ -1085,7 +1399,7 @@ function syncTileKinds(){
     var inner=elm.querySelector('.tile-inner');
     if(!inner) return;
     inner.className='tile-inner f'+t.kind;
-    inner.innerHTML='<svg viewBox="0 0 1024 1024"><use href="#'+foodSymbolId(t.kind)+'"/></svg>';
+    inner.innerHTML=tileFaceMarkup(t);
   });
 }
 function resizeBoard(){
@@ -1214,8 +1528,10 @@ function clearTriples(){
         var legacyIdx=[];
         state.tray.forEach(function(v,i){ if(v===legacyKind && legacyIdx.length<3) legacyIdx.push(i); });
         var legacyKinds=legacyIdx.map(function(i){ return state.tray[i]; });
+        var legacyTileIds=legacyIdx.map(function(i){ return state.trayTiles[i]; });
         for(var li=legacyIdx.length-1;li>=0;li--){ state.tray.splice(legacyIdx[li],1); state.trayTiles.splice(legacyIdx[li],1); }
-        legacyCleared.push({kind:legacyKind,indices:legacyIdx,kinds:legacyKinds});
+        legacyCleared.push({kind:legacyKind,indices:legacyIdx,kinds:legacyKinds,
+          tileIds:legacyTileIds});
       }
     });
     return legacyCleared;
@@ -1237,8 +1553,10 @@ function clearTriples(){
     if(!idxs) break;
     idxs.sort(function(a,b){ return a-b; });
     var kinds=idxs.map(function(i){ return state.tray[i]; });
+    var tileIds=idxs.map(function(i){ return state.trayTiles[i]; });
     for(var i=idxs.length-1;i>=0;i--){ state.tray.splice(idxs[i],1); state.trayTiles.splice(idxs[i],1); }
-    cleared.push({ kind:matchKind, indices:idxs, kinds:kinds });
+    cleared.push({ kind:matchKind, indices:idxs, kinds:kinds,
+      tileIds:tileIds });
   }
   return cleared;
 }
@@ -1284,6 +1602,7 @@ function useClearTray(){
   state.pendingPick=null;
   state.gen++;
   // 清空不是洗牌：保留所有牌的原坐标、牌面和特殊状态，避免清空后改变通关路线。
+  // 生成阶段会把普通牌、万能牌和传送预留牌一起检查；运行时不擅自改牌面。
   state.coverers=buildCoverers(state.tiles);
   renderBoard();
   renderTray([], -1);
@@ -1340,6 +1659,7 @@ function startGame(n){
   lastTileInput=Date.now(); // 忽略选关/下一关按钮抬起时落到新棋盘上的误触点击
   state.level=n; state.started=true;
   state.over=false; state.gen++;
+  state.safeOrder=null;
   state.trayCap=TRAY_CAP;                                // 每关槽位固定 7 格
   state.tray=[];
   state.trayTiles=[];
