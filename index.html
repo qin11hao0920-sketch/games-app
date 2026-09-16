@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#101426">
+<meta name="theme-color" content="#0a0e1a">
 <!-- iPhone 添加到主屏幕：图标与全屏体验 -->
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
@@ -12,118 +12,157 @@
 <meta name="apple-mobile-web-app-title" content="梦瑞集">
 <title>梦瑞集</title>
 <style>
-  :root { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; overflow: hidden; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(160deg, #141b33 0%, #0d1020 55%, #1a1030 100%);
-    color: #eef1f8;
-    user-select: none; -webkit-user-select: none;
-    touch-action: manipulation; overscroll-behavior: none;
+  :root{
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --bg: #0a0e1a;              /* 深蓝黑底 */
+    --card: #111629;            /* 卡片统一底色 */
+    --card-2: #0c1120;          /* 图片区底色 */
+    --line: rgba(255,255,255,.07);
+    --line-hi: rgba(162,188,255,.45);
+    --t1: #eef2fa;              /* 标题：偏白 */
+    --t2: #8b94ad;              /* 介绍：浅灰 */
+    --accent: #7f9cff;          /* 唯一彩色强调色 */
+    --r: 18px;                  /* 统一圆角 */
+    --gap: 14px;                /* 统一间距 */
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body{ height:100%; overflow:hidden; }
+  body{
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background:var(--bg);
+    color:var(--t1);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation; overscroll-behavior:none;
+  }
+  /* 背景光晕：非常淡 */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(42% 32% at 16% 3%,  rgba(96,132,255,.10), transparent 72%),
+      radial-gradient(38% 28% at 87% 17%, rgba(128,96,230,.075), transparent 72%),
+      radial-gradient(46% 34% at 50% 105%, rgba(62,118,208,.065), transparent 72%);
   }
 
   /* ===== 主页 ===== */
-  #home {
-    height: 100vh; height: 100dvh;
-    display: flex; flex-direction: column;
-    padding: calc(14px + var(--safe-t)) 16px calc(14px + var(--safe-b));
-    max-width: 560px; margin: 0 auto;
+  #home{
+    position:relative; z-index:1;
+    height:100vh; height:100dvh;
+    display:flex; flex-direction:column;
+    padding:calc(16px + var(--safe-t)) 16px calc(14px + var(--safe-b));
+    max-width:560px; margin:0 auto;
   }
-  .hero { text-align: center; padding: 12px 0 4px; }
-  .hero .logo { font-size: 38px; line-height: 1; filter: drop-shadow(0 4px 12px rgba(255,255,255,.18)); }
-  .hero h1 { margin-top: 8px; font-size: 23px; letter-spacing: 4px; font-weight: 800;
-    background: linear-gradient(90deg, #ffd97a, #ff8f6b, #e86ad0);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero p { margin-top: 6px; color: #8b93ad; font-size: 12px; letter-spacing: 2px; }
+  .hero{ text-align:center; padding:10px 0 6px; }
+  .hero .logo{ font-size:33px; line-height:1; }
+  .hero h1{ margin-top:9px; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--t1); }
+  .hero p{ margin-top:7px; font-size:12px; letter-spacing:2px; color:#6f7994; }
 
-  /* 可滚动的游戏列表 */
-  #list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px 0 10px; }
+  #list{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:2px 0 8px; }
 
-  .section-title { font-size: 12px; color: #7d85a3; letter-spacing: 3px; margin: 10px 4px 8px; }
-
-  /* ===== 置顶大卡（我的游戏） ===== */
-  .featured { display: flex; flex-direction: column; gap: 12px; }
-  .card.big {
-    position: relative; overflow: hidden;
-    border-radius: 20px; padding: 18px 18px;
-    display: flex; align-items: center; gap: 14px;
-    box-shadow: 0 10px 26px rgba(0,0,0,.35);
-    cursor: pointer; transition: transform .15s ease;
+  .section-title{
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; letter-spacing:3px; color:#79839e;
+    margin:14px 2px 10px;
   }
-  .card.big:active { transform: scale(.97); }
-  .card.big .icon {
-    width: 58px; height: 58px; flex-shrink: 0;
-    border-radius: 16px; display: flex; align-items: center; justify-content: center;
-    font-size: 30px;
-  }
-  .card.big .info { flex: 1; min-width: 0; }
-  .card.big .info h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
-  .card.big .info p { margin-top: 4px; font-size: 12px; opacity: .78; line-height: 1.45; }
-  .card.big .go {
-    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 15px; font-weight: 900; opacity: .9;
-  }
-  .badge {
-    position: absolute; top: 12px; right: 14px;
-    font-size: 10px; letter-spacing: 1px; font-weight: 700;
-    padding: 3px 9px; border-radius: 999px;
+  .section-title::before{
+    content:""; width:3px; height:3px; border-radius:50%;
+    background:var(--accent); box-shadow:0 0 7px rgba(127,156,255,.85);
   }
 
-  /* 华容道卡片：深蓝夜色风 */
-  .card.klotski { background: linear-gradient(135deg, #1b2a5e 0%, #0f3460 60%, #16213e 100%); border: 1px solid rgba(233,69,96,.35); }
-  .card.klotski .icon { background: rgba(233,69,96,.15); box-shadow: inset 0 0 0 1.5px rgba(233,69,96,.45); }
-  .card.klotski h2 { color: #ff7a95; }
-  .card.klotski p { color: #9fb0d8; }
-  .card.klotski .go { background: rgba(233,69,96,.22); color: #e94560; }
-  .card.klotski .badge { background: rgba(233,69,96,.2); color: #ff8ba0; border: 1px solid rgba(233,69,96,.4); }
-
-  /* 水果叠叠乐卡片：暖橙奶油风 */
-  .card.match { background: linear-gradient(135deg, #ffd9a0 0%, #ffb968 60%, #ff9f2e 100%); border: 1px solid rgba(255,255,255,.5); }
-  .card.match .icon { background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 1.5px rgba(122,74,33,.25); }
-  .card.match h2 { color: #6b3d14; }
-  .card.match p { color: #7a4a21; }
-  .card.match .go { background: rgba(122,74,33,.15); color: #7a4a21; }
-  .card.match .badge { background: rgba(122,74,33,.14); color: #6b3d14; border: 1px solid rgba(122,74,33,.3); }
-
-  /* ===== 其余游戏：两列网格 ===== */
-  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .card.mini {
-    border-radius: 18px; padding: 15px 14px 13px;
-    display: flex; flex-direction: column; gap: 9px;
-    box-shadow: 0 8px 20px rgba(0,0,0,.32);
-    cursor: pointer; transition: transform .15s ease;
-    color: #fff;
+  /* ===== 卡片：统一底色 / 圆角 / 间距，轻阴影 ===== */
+  .card{
+    position:relative; display:block; overflow:hidden;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    box-shadow:0 1px 2px rgba(0,0,0,.32);
+    cursor:pointer; text-align:left;
+    transition:transform .2s cubic-bezier(.2,.7,.3,1), border-color .2s ease, box-shadow .2s ease;
   }
-  .card.mini:active { transform: scale(.96); }
-  .card.mini .icon {
-    width: 42px; height: 42px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; background: rgba(255,255,255,.18);
+  /* 图片区（用 padding 撑高，兼容老 WebView） */
+  .thumb{ position:relative; width:100%; height:0; padding-bottom:62.5%; background:var(--card-2); overflow:hidden; }
+  .ph{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:28px; opacity:.3;
   }
-  .card.mini h2 { font-size: 15.5px; font-weight: 800; letter-spacing: .5px; text-shadow: 0 1px 3px rgba(0,0,0,.25); }
-  .card.mini p { font-size: 11px; opacity: .82; line-height: 1.45; }
+  .thumb img{
+    position:absolute; inset:0; display:block; width:100%; height:100%;
+    object-fit:cover; transition:transform .45s cubic-bezier(.2,.7,.3,1), filter .2s ease;
+  }
+  /* 底部渐隐：让插画融进卡片，同时压掉右下角水印 */
+  .thumb::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:48%; pointer-events:none;
+    background:linear-gradient(to top,
+      rgba(17,22,41,.97) 0%, rgba(17,22,41,.88) 13%,
+      rgba(17,22,41,.46) 42%, rgba(17,22,41,0) 100%);
+  }
 
-  .footer { text-align: center; color: #565e78; font-size: 11px; letter-spacing: 2px; padding-top: 8px; }
+  .body{ padding:11px 13px 13px; }
+  h2{ font-size:15px; font-weight:700; letter-spacing:.4px; color:var(--t1); }
+  p{ margin-top:5px; font-size:11.5px; line-height:1.5; color:var(--t2); }
+
+  /* 置顶大卡 */
+  .featured{ display:flex; flex-direction:column; gap:var(--gap); }
+  .card.big .thumb{ padding-bottom:56.25%; }         /* 16:9 */
+  .card.big .body{ display:flex; align-items:flex-start; gap:10px; padding:12px 15px 15px; }
+  .card.big .txt{ flex:1; min-width:0; }
+  .card.big h2{ font-size:17px; }
+  .card.big p{ font-size:12px; }
+  .badge{
+    flex-shrink:0; margin-top:2px;
+    font-size:10px; font-weight:600; letter-spacing:.5px;
+    padding:3px 8px; border-radius:999px;
+    color:var(--accent);
+    background:rgba(127,156,255,.12);
+    border:1px solid rgba(127,156,255,.28);
+  }
+
+  /* 其余游戏：两列网格 */
+  .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--gap); }
+  .card.mini .ph{ font-size:24px; }
+  .card.mini h2{ font-size:14.5px; }
+  .card.mini p{ font-size:11px; }
+
+  .footer{ text-align:center; color:#5a6380; font-size:11px; letter-spacing:2px; padding-top:14px; }
+
+  /* ===== 动效：桌面悬浮上浮 + 边缘变亮 ===== */
+  @media (hover:hover) and (pointer:fine){
+    .card:hover{
+      transform:translateY(-3px);
+      border-color:var(--line-hi);
+      box-shadow:0 8px 22px rgba(0,0,0,.42), 0 0 24px -8px rgba(127,156,255,.45);
+    }
+    .card:hover .thumb img{ transform:scale(1.05); }
+    .card:hover h2{ color:#fff; }
+  }
+  /* 动效：按下轻微按压反馈（含手机） */
+  .card:active{
+    transform:scale(.976);
+    border-color:var(--line-hi);
+  }
+  .card:active .thumb img{ filter:brightness(.86); }
+
+  @media (prefers-reduced-motion:reduce){
+    .card, .thumb img{ transition:none; }
+  }
 
   /* ===== 游戏运行视图 ===== */
-  #player { position: fixed; inset: 0; z-index: 50; background: #101426; display: none; }
-  #player.on { display: block; }
-  #player iframe { width: 100%; height: 100%; border: 0; display: block; background: #101426; }
+  #player{ position:fixed; inset:0; z-index:50; background:#0a0e1a; display:none; }
+  #player.on{ display:block; }
+  #player iframe{ width:100%; height:100%; border:0; display:block; background:#0a0e1a; }
 
-  #backBtn {
-    position: fixed; top: calc(10px + var(--safe-t)); left: 12px; z-index: 60;
-    display: none; align-items: center; gap: 6px;
-    padding: 8px 16px 8px 12px; border-radius: 999px;
-    background: rgba(10, 13, 28, .78); color: #fff; font-size: 13px; font-weight: 600;
-    border: 1px solid rgba(255,255,255,.18);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  #backBtn{
+    position:fixed; top:calc(10px + var(--safe-t)); left:12px; z-index:60;
+    display:none; align-items:center; gap:6px;
+    padding:8px 16px 8px 12px; border-radius:999px;
+    background:rgba(12,17,32,.78); color:#fff; font-size:13px; font-weight:600;
+    border:1px solid rgba(255,255,255,.16);
+    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+    cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,.38);
   }
-  #backBtn.on { display: flex; }
-  #backBtn:active { transform: scale(.93); }
-  #backBtn svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+  #backBtn.on{ display:flex; }
+  #backBtn:active{ transform:scale(.93); }
+  #backBtn svg{ width:14px; height:14px; fill:none; stroke:#fff; stroke-width:2.5; stroke-linecap:round; stroke-linejoin:round; }
 </style>
 </head>
 <body>
@@ -137,36 +176,14 @@
     </div>
 
     <div id="list">
-      <!-- 置顶：我的游戏 -->
       <div class="section-title">我 的 游 戏</div>
-      <div class="featured">
-        <div class="card big klotski" data-src="华容道.html" data-title="6×6 华容道">
-          <div class="icon">🚗</div>
-          <div class="info">
-            <h2>6×6 华容道</h2>
-            <p>滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。</p>
-          </div>
-          <div class="badge">我的</div>
-          <div class="go">›</div>
-        </div>
+      <div class="featured" id="featured"></div>
 
-        <div class="card big match" data-src="水果叠叠乐.html" data-title="水果叠叠乐">
-          <div class="icon">🍉</div>
-          <div class="info">
-            <h2>水果叠叠乐</h2>
-            <p>点击相同水果消除进槽，槽满即输，清空棋盘过关，轻松解压。</p>
-          </div>
-          <div class="badge">我的</div>
-          <div class="go">›</div>
-        </div>
-      </div>
-
-      <!-- 其余游戏网格 -->
       <div class="section-title">精 选 游 戏</div>
       <div class="grid" id="grid"></div>
-    </div>
 
-    <div class="footer">共 17 款 · 离线可玩</div>
+      <div class="footer" id="footer"></div>
+    </div>
   </div>
 
   <!-- 游戏运行视图 -->
@@ -185,40 +202,83 @@
   var backBtn = document.getElementById('backBtn');
   var inGame  = false;
 
-  // ===== 精选游戏列表（文件名，图标，名称，简介，渐变色） =====
-  var GAMES = [
-    { f: '2048.html',      i: '🔢', n: '2048',       d: '滑动合并数字，冲向 2048', g: ['#f0b34c', '#d97a1e'] },
-    { f: '数字华容道.html', i: '🧩', n: '数字华容道',  d: '滑动数字块，恢复顺序',   g: ['#2f9e8f', '#1b6a5e'] },
-    { f: '记忆翻牌.html',   i: '🃏', n: '记忆翻牌',    d: '翻出相同的两张牌',       g: ['#c05fa0', '#83395f'] },
-    { f: '西蒙记忆.html',   i: '🎵', n: '西蒙记忆',    d: '跟随灯光记住序列',       g: ['#4c9fb0', '#2b6571'] },
-    { f: '打砖块.html',     i: '🟧', n: '打砖块',      d: '弹球撞碎所有砖块',       g: ['#d95f6a', '#9e3540'] },
-    { f: '像素小鸟.html',   i: '🐦', n: '像素小鸟',    d: '点击飞行，穿过缝隙',     g: ['#5db8e8', '#2e7fae'] },
-    { f: '打地鼠.html',     i: '🔨', n: '打地鼠',      d: '地鼠冒头就砸，拼手速',   g: ['#a8814f', '#71562f'] },
-    { f: '切水果.html',     i: '🍊', n: '切水果',      d: '划刀切水果，躲开炸弹',   g: ['#e8743c', '#a84a1e'] },
-    { f: '车道狂飙.html',   i: '🏎️', n: '车道狂飙',    d: '躲避车流，狂飙冲刺',     g: ['#b8434f', '#7a1f28'] },
-    { f: '泡泡龙.html',     i: '🫧', n: '泡泡龙',      d: '瞄准发射，三色消除',     g: ['#3fa8c9', '#20708c'] },
-    { f: '塔防.html',       i: '🏰', n: '塔防',        d: '布置炮塔，拦截敌军',     g: ['#6b5fb8', '#3f3580'] },
-    { f: '井字棋.html',     i: '⭕', n: '井字棋',      d: '与电脑对战，三连线胜',   g: ['#5a8f3c', '#38611f'] },
-    { f: '知识问答.html',   i: '🎓', n: '知识问答',    d: '40 道中文知识题挑战',   g: ['#c48f3a', '#8f6522'] }
+  // ===== 置顶：我的游戏 =====
+  var FEATURED = [
+    { f:'华容道.html', c:'封面/华容道.jpg', i:'🚗', n:'6×6 华容道',
+      d:'滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。', badge:'我的' },
+    { f:'水果叠叠乐.html', c:'封面/水果叠叠乐.jpg', i:'🍉', n:'水果叠叠乐',
+      d:'点击相同水果消除进槽，槽满即输，清空棋盘过关，轻松解压。', badge:'我的' }
   ];
 
-  // 生成网格卡片（按 GAMES 数组渲染，文件不存在时自动隐藏）
-  var grid = document.getElementById('grid');
-  var cardsHtml = '';
-  for (var k = 0; k < GAMES.length; k++) {
-    var gm = GAMES[k];
-    cardsHtml += '<div class="card mini" data-src="' + gm.f + '" data-title="' + gm.n + '"'
-      + ' style="background:linear-gradient(135deg,' + gm.g[0] + ',' + gm.g[1] + ')">'
-      + '<div class="icon">' + gm.i + '</div>'
-      + '<h2>' + gm.n + '</h2>'
-      + '<p>' + gm.d + '</p>'
+  // ===== 精选游戏（文件名 / 封面 / 兜底表情 / 名称 / 简介） =====
+  var GAMES = [
+    { f:'2048.html',       c:'封面/2048.jpg',       i:'🔢', n:'2048',       d:'滑动合并数字，冲向 2048' },
+    { f:'数字华容道.html',  c:'封面/数字华容道.jpg',  i:'🧩', n:'数字华容道',  d:'滑动数字块，恢复顺序' },
+    { f:'记忆翻牌.html',    c:'封面/记忆翻牌.jpg',    i:'🃏', n:'记忆翻牌',    d:'翻出相同的两张牌' },
+    { f:'西蒙记忆.html',    c:'封面/西蒙记忆.jpg',    i:'🎵', n:'西蒙记忆',    d:'跟随灯光记住序列' },
+    { f:'打砖块.html',      c:'封面/打砖块.jpg',      i:'🟧', n:'打砖块',      d:'弹球撞碎所有砖块' },
+    { f:'像素小鸟.html',    c:'封面/像素小鸟.jpg',    i:'🐦', n:'像素小鸟',    d:'点击飞行，穿过缝隙' },
+    { f:'打地鼠.html',      c:'封面/打地鼠.jpg',      i:'🔨', n:'打地鼠',      d:'地鼠冒头就砸，拼手速' },
+    { f:'切水果.html',      c:'封面/切水果.jpg',      i:'🍊', n:'切水果',      d:'划刀切水果，躲开炸弹' },
+    { f:'车道狂飙.html',    c:'封面/车道狂飙.jpg',    i:'🏎️', n:'车道狂飙',    d:'躲避车流，狂飙冲刺' },
+    { f:'泡泡龙.html',      c:'封面/泡泡龙.jpg',      i:'🫧', n:'泡泡龙',      d:'瞄准发射，三色消除' },
+    { f:'塔防.html',        c:'封面/塔防.jpg',        i:'🏰', n:'塔防',        d:'布置炮塔，拦截敌军' },
+    { f:'井字棋.html',      c:'封面/井字棋.jpg',      i:'⭕', n:'井字棋',      d:'与电脑对战，三连线胜' },
+    { f:'知识问答.html',    c:'封面/知识问答.jpg',    i:'🎓', n:'知识问答',    d:'40 道中文知识题挑战' }
+  ];
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // 缩略图：img 加载失败时自动露出兜底表情
+  function thumbHtml(g) {
+    return '<div class="thumb">'
+      + '<span class="ph">' + esc(g.i) + '</span>'
+      + '<img src="' + esc(g.c) + '" alt="" decoding="async">'
       + '</div>';
   }
-  grid.innerHTML = cardsHtml;
 
-  // 打开游戏：进入运行视图，并压入一条历史记录，
-  // 这样安卓返回手势/返回键会先回到主页而不是直接退出 App
+  var featureHtml = '';
+  for (var a = 0; a < FEATURED.length; a++) {
+    var fc = FEATURED[a];
+    featureHtml += '<div class="card big" role="button" tabindex="0" data-src="' + esc(fc.f) + '"'
+      + ' aria-label="打开 ' + esc(fc.n) + '">'
+      + thumbHtml(fc)
+      + '<div class="body">'
+      +   '<div class="txt"><h2>' + esc(fc.n) + '</h2><p>' + esc(fc.d) + '</p></div>'
+      +   '<span class="badge">' + esc(fc.badge) + '</span>'
+      + '</div></div>';
+  }
+  document.getElementById('featured').innerHTML = featureHtml;
+
+  var gridHtml = '';
+  for (var k = 0; k < GAMES.length; k++) {
+    var gm = GAMES[k];
+    gridHtml += '<div class="card mini" role="button" tabindex="0" data-src="' + esc(gm.f) + '"'
+      + ' aria-label="打开 ' + esc(gm.n) + '">'
+      + thumbHtml(gm)
+      + '<div class="body"><h2>' + esc(gm.n) + '</h2><p>' + esc(gm.d) + '</p></div>'
+      + '</div>';
+  }
+  document.getElementById('grid').innerHTML = gridHtml;
+
+  document.getElementById('footer').textContent =
+    '共 ' + (FEATURED.length + GAMES.length) + ' 款 · 离线可玩';
+
+  // 封面临时缺失时退回表情占位，不影响点击
+  Array.prototype.forEach.call(document.querySelectorAll('.thumb img'), function (im) {
+    im.addEventListener('error', function () {
+      im.style.display = 'none';
+      var ph = im.parentNode.querySelector('.ph');
+      if (ph) ph.style.opacity = '.75';
+    });
+  });
+
+  // ===== 打开 / 关闭游戏 =====
+  // 打开时压入一条历史记录，这样安卓返回手势/返回键会先回主页而不是直接退出 App
   function openGame(src) {
+    if (!src) return;
     inGame = true;
     player.classList.add('on');
     backBtn.classList.add('on');
@@ -226,7 +286,6 @@
     history.pushState({ game: src }, '');
   }
 
-  // 关闭游戏（fromPop=true 表示由系统返回触发，无需再回退历史）
   function closeGame(fromPop) {
     if (!inGame) return;
     inGame = false;
@@ -236,9 +295,15 @@
     if (!fromPop && history.state && history.state.game) history.back();
   }
 
-  document.querySelectorAll('.card').forEach(function (card) {
+  Array.prototype.forEach.call(document.querySelectorAll('.card'), function (card) {
     card.addEventListener('click', function () {
       openGame(card.getAttribute('data-src'));
+    });
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 13 || e.keyCode === 32) {
+        e.preventDefault();
+        openGame(card.getAttribute('data-src'));
+      }
     });
   });
 
