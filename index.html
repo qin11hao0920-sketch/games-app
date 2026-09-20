@@ -5,8 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0B0D11">
 <!-- iPhone 添加到主屏幕：图标与全屏体验 -->
-<link rel="apple-touch-icon" href="icon.png">
-<link rel="icon" href="icon.png">
+<!-- 原来直接引用 1024x1024 的 icon.png（1.33 MB），每次打开首页都要拉；
+     现在拆成 32（标签页图标，2.7 KB）+ 180（添加到主屏幕，iOS 才会取） -->
+<link rel="icon" type="image/png" sizes="32x32" href="icon-32.png">
+<link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<!-- 主推封面是首屏最显眼的图，预加载让它在解析 HTML 阶段就开始下，
+     不必等下面那段脚本跑完才发现要下载它 -->
+<link rel="preload" as="image" href="封面/水果叠叠乐.jpg" fetchpriority="high">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="梦瑞集">
@@ -309,28 +315,29 @@
   };
 
   // ===== 我的游戏 =====
+  // 网格卡一律用 封面/缩略图/ 下的 560px 版本（原图 1200x800 每张 70~130KB，网格卡最多只显示 277px，纯属浪费）
   var MINE = [
-    { f:'华容道.html',     c:'封面/华容道.jpg',       i:'🚗', n:'6×6 华容道',
+    { f:'华容道.html',     c:'封面/缩略图/华容道.jpg',       i:'🚗', n:'6×6 华容道',
       d:'滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。' },
-    { f:'水果叠叠乐.html', c:'封面/水果叠叠乐.jpg',   i:'🍉', n:'水果叠叠乐',
+    { f:'水果叠叠乐.html', c:'封面/缩略图/水果叠叠乐.jpg',   i:'🍉', n:'水果叠叠乐',
       d:'经典版水果消除，规则更简单，随手玩两局。' }
   ];
 
   // ===== 精选游戏（文件名 / 封面 / 兜底表情 / 名称 / 简介） =====
   var GAMES = [
-    { f:'2048.html',       c:'封面/2048.jpg',       i:'🔢', n:'2048',       d:'滑动合并数字，冲向 2048' },
-    { f:'数字华容道.html',  c:'封面/数字华容道.jpg',  i:'🧩', n:'数字华容道',  d:'滑动数字块，恢复顺序' },
-    { f:'记忆翻牌.html',    c:'封面/记忆翻牌.jpg',    i:'🃏', n:'记忆翻牌',    d:'翻出相同的两张牌' },
-    { f:'西蒙记忆.html',    c:'封面/西蒙记忆.jpg',    i:'🎵', n:'西蒙记忆',    d:'跟随灯光记住序列' },
-    { f:'打砖块.html',      c:'封面/打砖块.jpg',      i:'🟧', n:'打砖块',      d:'弹球撞碎所有砖块' },
-    { f:'像素小鸟.html',    c:'封面/像素小鸟.jpg',    i:'🐦', n:'像素小鸟',    d:'点击飞行，穿过缝隙' },
-    { f:'打地鼠.html',      c:'封面/打地鼠.jpg',      i:'🔨', n:'打地鼠',      d:'地鼠冒头就砸，拼手速' },
-    { f:'切水果.html',      c:'封面/切水果.jpg',      i:'🍊', n:'切水果',      d:'划刀切水果，躲开炸弹' },
-    { f:'车道狂飙.html',    c:'封面/车道狂飙.jpg',    i:'🏎️', n:'车道狂飙',    d:'躲避车流，狂飙冲刺' },
-    { f:'泡泡龙.html',      c:'封面/泡泡龙.jpg',      i:'🫧', n:'泡泡龙',      d:'瞄准发射，三色消除' },
-    { f:'塔防.html',        c:'封面/塔防.jpg',        i:'🏰', n:'塔防',        d:'布置炮塔，拦截敌军' },
-    { f:'井字棋.html',      c:'封面/井字棋.jpg',      i:'⭕', n:'井字棋',      d:'与电脑对战，三连线胜' },
-    { f:'知识问答.html',    c:'封面/知识问答.jpg',    i:'🎓', n:'知识问答',    d:'40 道中文知识题挑战' }
+    { f:'2048.html',       c:'封面/缩略图/2048.jpg',       i:'🔢', n:'2048',       d:'滑动合并数字，冲向 2048' },
+    { f:'数字华容道.html',  c:'封面/缩略图/数字华容道.jpg',  i:'🧩', n:'数字华容道',  d:'滑动数字块，恢复顺序' },
+    { f:'记忆翻牌.html',    c:'封面/缩略图/记忆翻牌.jpg',    i:'🃏', n:'记忆翻牌',    d:'翻出相同的两张牌' },
+    { f:'西蒙记忆.html',    c:'封面/缩略图/西蒙记忆.jpg',    i:'🎵', n:'西蒙记忆',    d:'跟随灯光记住序列' },
+    { f:'打砖块.html',      c:'封面/缩略图/打砖块.jpg',      i:'🟧', n:'打砖块',      d:'弹球撞碎所有砖块' },
+    { f:'像素小鸟.html',    c:'封面/缩略图/像素小鸟.jpg',    i:'🐦', n:'像素小鸟',    d:'点击飞行，穿过缝隙' },
+    { f:'打地鼠.html',      c:'封面/缩略图/打地鼠.jpg',      i:'🔨', n:'打地鼠',      d:'地鼠冒头就砸，拼手速' },
+    { f:'切水果.html',      c:'封面/缩略图/切水果.jpg',      i:'🍊', n:'切水果',      d:'划刀切水果，躲开炸弹' },
+    { f:'车道狂飙.html',    c:'封面/缩略图/车道狂飙.jpg',    i:'🏎️', n:'车道狂飙',    d:'躲避车流，狂飙冲刺' },
+    { f:'泡泡龙.html',      c:'封面/缩略图/泡泡龙.jpg',      i:'🫧', n:'泡泡龙',      d:'瞄准发射，三色消除' },
+    { f:'塔防.html',        c:'封面/缩略图/塔防.jpg',        i:'🏰', n:'塔防',        d:'布置炮塔，拦截敌军' },
+    { f:'井字棋.html',      c:'封面/缩略图/井字棋.jpg',      i:'⭕', n:'井字棋',      d:'与电脑对战，三连线胜' },
+    { f:'知识问答.html',    c:'封面/缩略图/知识问答.jpg',    i:'🎓', n:'知识问答',    d:'40 道中文知识题挑战' }
   ];
 
   function esc(s) {
@@ -338,10 +345,15 @@
   }
 
   // 缩略图：封面加载失败时自动露出兜底表情
-  function thumbHtml(g) {
+  // lazy=true 的（网格卡）走原生懒加载，滚到跟前才下；主推卡用 fetchpriority=high 抢带宽。
+  // 极老的 WebView 不认 loading 属性，先探测再决定，免得封面永远不出来。
+  var CAN_LAZY = ('loading' in HTMLImageElement.prototype);
+  function thumbHtml(g, lazy) {
     return '<div class="thumb">'
       + '<span class="ph">' + esc(g.i) + '</span>'
-      + '<img src="' + esc(g.c) + '" alt="" decoding="async">'
+      + '<img src="' + esc(g.c) + '" alt="" decoding="async"'
+      + (lazy ? (CAN_LAZY ? ' loading="lazy"' : '') : ' fetchpriority="high"')
+      + '>'
       + '</div>';
   }
 
@@ -366,7 +378,7 @@
       var g = list[k];
       out += '<div class="card mini' + (mine ? ' mine' : '') + '" role="button" tabindex="0"'
         + ' data-src="' + esc(g.f) + '" aria-label="打开 ' + esc(g.n) + '">'
-        + thumbHtml(g)
+        + thumbHtml(g, true)
         + '<div class="body"><h2>' + esc(g.n) + '</h2><p>' + esc(g.d) + '</p></div>'
         + '</div>';
     }
