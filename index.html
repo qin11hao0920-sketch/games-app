@@ -3,28 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0a0e1a">
+<meta name="theme-color" content="#0B0D11">
 <!-- iPhone 添加到主屏幕：图标与全屏体验 -->
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="梦瑞集">
-<title>梦瑞集</title>
+<title>梦瑞集 · 离线小游戏合集</title>
 <style>
   :root{
     --safe-t: env(safe-area-inset-top, 0px);
     --safe-b: env(safe-area-inset-bottom, 0px);
-    --bg: #0a0e1a;              /* 深蓝黑底 */
-    --card: #111629;            /* 卡片统一底色 */
-    --card-2: #0c1120;          /* 图片区底色 */
-    --line: rgba(255,255,255,.07);
-    --line-hi: rgba(162,188,255,.45);
-    --t1: #eef2fa;              /* 标题：偏白 */
-    --t2: #8b94ad;              /* 介绍：浅灰 */
-    --accent: #7f9cff;          /* 唯一彩色强调色 */
-    --r: 18px;                  /* 统一圆角 */
-    --gap: 14px;                /* 统一间距 */
+    /* 深色中性底：衬托各种封面的颜色，不用花哨底色抢戏 */
+    --bg:     #0B0D11;
+    --card:   #14181F;
+    --card-2: #0E1116;
+    --line:   rgba(255,255,255,.075);
+    --line-hi:rgba(242,169,59,.44);
+    --t1:     #F3F5F8;   /* 标题 */
+    --t2:     #8B94A3;   /* 简介 */
+    --t3:     #5C6673;   /* 页脚 / 次要信息 */
+    /* 主强调色取暖金（呼应主推游戏的果园暖调），次强调取草绿 */
+    --gold:   #F2A93B;
+    --gold-d: #C8842A;
+    --green:  #86B96A;
+    --r:      20px;
+    --gap:    14px;
   }
   *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body{ height:100%; overflow:hidden; }
@@ -34,72 +39,91 @@
     color:var(--t1);
     user-select:none; -webkit-user-select:none;
     touch-action:manipulation; overscroll-behavior:none;
+    -webkit-font-smoothing:antialiased;
   }
-  /* 背景光晕：非常淡 */
+  /* 背景：三团很淡的暖光 + 一层点阵纹理，避免大面积纯黑显得死板 */
   body::before{
     content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
     background:
-      radial-gradient(42% 32% at 16% 3%,  rgba(96,132,255,.10), transparent 72%),
-      radial-gradient(38% 28% at 87% 17%, rgba(128,96,230,.075), transparent 72%),
-      radial-gradient(46% 34% at 50% 105%, rgba(62,118,208,.065), transparent 72%);
+      radial-gradient(44% 30% at 14% 2%,   rgba(242,169,59,.11), transparent 70%),
+      radial-gradient(40% 26% at 88% 12%,  rgba(134,185,106,.075), transparent 70%),
+      radial-gradient(52% 34% at 50% 104%, rgba(200,132,42,.07), transparent 72%);
+  }
+  body::after{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.03;
+    background-image:radial-gradient(rgba(255,255,255,.85) 1px, transparent 1px);
+    background-size:3px 3px;
   }
 
-  /* ===== 主页 ===== */
+  /* ===================== 主页 ===================== */
   #home{
     position:relative; z-index:1;
     height:100vh; height:100dvh;
     display:flex; flex-direction:column;
-    padding:calc(16px + var(--safe-t)) 16px calc(14px + var(--safe-b));
-    max-width:560px; margin:0 auto;
+    padding:calc(14px + var(--safe-t)) 16px calc(12px + var(--safe-b));
+    max-width:600px; margin:0 auto;
   }
-  .hero{ text-align:center; padding:10px 0 6px; }
-  .hero .logo{ font-size:33px; line-height:1; }
-  .hero h1{ margin-top:9px; font-size:22px; font-weight:700; letter-spacing:5px; color:var(--t1); }
-  .hero p{ margin-top:7px; font-size:12px; letter-spacing:2px; color:#6f7994; }
 
-  /* ===== 滚动区 =====
-     移动端：隐藏系统滚动条（贴近原生 App 观感）
-     桌面端：换成贴合深色主题的细滚动条，默认淡、悬浮时才明显 */
+  /* ---- 品牌区 ---- */
+  .hero{ display:flex; align-items:center; gap:12px; padding:8px 2px 4px; }
+  .hero .mark{
+    flex-shrink:0; width:44px; height:44px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; font-size:22px;
+    background:linear-gradient(150deg, rgba(242,169,59,.20), rgba(134,185,106,.14));
+    border:1px solid rgba(242,169,59,.30);
+    box-shadow:0 3px 14px -4px rgba(242,169,59,.45), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .hero .txt{ min-width:0; }
+  .hero h1{ font-size:20px; font-weight:800; letter-spacing:5px; line-height:1.15; }
+  .hero p{ margin-top:3px; font-size:11px; letter-spacing:1.6px; color:var(--t3); }
+  .hero .stat{
+    margin-left:auto; flex-shrink:0; text-align:right;
+  }
+  .hero .stat b{
+    display:block; font-size:17px; font-weight:800; color:var(--gold);
+    font-variant-numeric:tabular-nums; line-height:1.1;
+  }
+  .hero .stat span{ font-size:9.5px; letter-spacing:1.4px; color:var(--t3); }
+
+  /* ---- 滚动区 ---- */
   #list{
-    flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:2px 0 8px;
+    flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:2px 0 6px;
     scrollbar-width:none; -ms-overflow-style:none;
   }
   #list::-webkit-scrollbar{ width:0; height:0; display:none; }
-
+  /* 桌面端换成贴合深色主题的细滚动条 */
   @media (hover:hover) and (pointer:fine){
-    #list{ scrollbar-width:thin; scrollbar-color:rgba(127,156,255,.34) transparent; }
+    #list{ scrollbar-width:thin; scrollbar-color:rgba(242,169,59,.30) transparent; }
     #list::-webkit-scrollbar{ display:block; width:10px; height:10px; }
     #list::-webkit-scrollbar-track{ background:transparent; }
     #list::-webkit-scrollbar-thumb{
-      background:rgba(127,156,255,.16); background-clip:content-box;
+      background:rgba(242,169,59,.14); background-clip:content-box;
       border:3px solid transparent; border-radius:999px;
     }
-    #list:hover::-webkit-scrollbar-thumb{ background:rgba(127,156,255,.42); background-clip:content-box; }
-    #list::-webkit-scrollbar-thumb:hover{ background:rgba(127,156,255,.62); background-clip:content-box; }
-    #list::-webkit-scrollbar-corner{ background:transparent; }
+    #list:hover::-webkit-scrollbar-thumb{ background:rgba(242,169,59,.40); background-clip:content-box; }
+    #list::-webkit-scrollbar-thumb:hover{ background:rgba(242,169,59,.62); background-clip:content-box; }
   }
 
   .section-title{
     display:flex; align-items:center; gap:8px;
-    font-size:12px; letter-spacing:3px; color:#79839e;
-    margin:14px 2px 10px;
+    font-size:11.5px; font-weight:600; letter-spacing:3px; color:#767F8E;
+    margin:16px 2px 10px;
   }
   .section-title::before{
-    content:""; width:3px; height:3px; border-radius:50%;
-    background:var(--accent); box-shadow:0 0 7px rgba(127,156,255,.85);
+    content:""; width:14px; height:2px; border-radius:2px;
+    background:linear-gradient(90deg, var(--gold), rgba(242,169,59,.15));
   }
 
-  /* ===== 卡片：统一底色 / 圆角 / 间距，轻阴影 ===== */
+  /* ===================== 卡片 ===================== */
   .card{
     position:relative; display:block; overflow:hidden;
     background:var(--card);
     border:1px solid var(--line);
     border-radius:var(--r);
-    box-shadow:0 1px 2px rgba(0,0,0,.32);
+    box-shadow:0 1px 2px rgba(0,0,0,.34);
     cursor:pointer; text-align:left;
     transition:transform .2s cubic-bezier(.2,.7,.3,1), border-color .2s ease, box-shadow .2s ease;
   }
-  /* 图片区（用 padding 撑高，兼容老 WebView） */
   .thumb{ position:relative; width:100%; height:0; padding-bottom:62.5%; background:var(--card-2); overflow:hidden; }
   .ph{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -107,78 +131,122 @@
   }
   .thumb img{
     position:absolute; inset:0; display:block; width:100%; height:100%;
-    object-fit:cover; transition:transform .45s cubic-bezier(.2,.7,.3,1), filter .2s ease;
+    object-fit:cover;
+    transition:transform .45s cubic-bezier(.2,.7,.3,1), filter .2s ease;
   }
-  /* 底部渐隐：让插画融进卡片，同时压掉右下角水印 */
+  /* 底部渐隐：让封面融进卡片，同时压掉图上的水印 */
   .thumb::after{
-    content:""; position:absolute; left:0; right:0; bottom:0; height:48%; pointer-events:none;
+    content:""; position:absolute; left:0; right:0; bottom:0; height:52%; pointer-events:none;
     background:linear-gradient(to top,
-      rgba(17,22,41,.97) 0%, rgba(17,22,41,.88) 13%,
-      rgba(17,22,41,.46) 42%, rgba(17,22,41,0) 100%);
+      rgba(20,24,31,.98) 0%, rgba(20,24,31,.90) 14%,
+      rgba(20,24,31,.48) 44%, rgba(20,24,31,0) 100%);
   }
-
   .body{ padding:11px 13px 13px; }
-  h2{ font-size:15px; font-weight:700; letter-spacing:.4px; color:var(--t1); }
-  p{ margin-top:5px; font-size:11.5px; line-height:1.5; color:var(--t2); }
+  .body h2{ font-size:14.5px; font-weight:700; letter-spacing:.3px; color:var(--t1); }
+  .body p{ margin-top:5px; font-size:11px; line-height:1.5; color:var(--t2); }
 
-  /* 置顶大卡 */
-  .featured{ display:flex; flex-direction:column; gap:var(--gap); }
-  .card.big .thumb{ padding-bottom:56.25%; }         /* 16:9 */
-  .card.big .body{ display:flex; align-items:flex-start; gap:10px; padding:12px 15px 15px; }
-  .card.big .txt{ flex:1; min-width:0; }
-  .card.big h2{ font-size:17px; }
-  .card.big p{ font-size:12px; }
-  .badge{
-    flex-shrink:0; margin-top:2px;
-    font-size:10px; font-weight:600; letter-spacing:.5px;
-    padding:3px 8px; border-radius:999px;
-    color:var(--accent);
-    background:rgba(127,156,255,.12);
-    border:1px solid rgba(127,156,255,.28);
+  /* ---- 主推大卡（聚果拾趣）---- */
+  .card.hero-card{
+    border-color:rgba(242,169,59,.34);
+    box-shadow:0 2px 10px -2px rgba(0,0,0,.5), 0 0 30px -14px rgba(242,169,59,.55);
+  }
+  .card.hero-card .thumb{ padding-bottom:58%; }
+  .card.hero-card .thumb::after{
+    height:68%;
+    background:linear-gradient(to top,
+      rgba(20,24,31,1) 0%, rgba(20,24,31,.94) 22%,
+      rgba(20,24,31,.52) 52%, rgba(20,24,31,0) 100%);
+  }
+  .card.hero-card .body{ padding:13px 15px 15px; }
+  .card.hero-card h2{ font-size:19px; letter-spacing:1px; }
+  .card.hero-card p{ margin-top:6px; font-size:11.5px; line-height:1.55; }
+  /* 右上角 NEW 角标 */
+  .flag{
+    position:absolute; top:11px; right:11px; z-index:3;
+    font-size:10px; font-weight:800; letter-spacing:1.2px;
+    padding:4px 9px; border-radius:999px; color:#20160a;
+    background:linear-gradient(140deg,#FFC868,#F2A93B);
+    box-shadow:0 3px 12px -3px rgba(242,169,59,.85);
+  }
+  /* 大卡底部的「开始玩」胶囊 */
+  .go{
+    display:inline-flex; align-items:center; gap:5px;
+    margin-top:11px; padding:7px 15px; border-radius:999px;
+    font-size:11.5px; font-weight:700; letter-spacing:.6px; color:#20160a;
+    background:linear-gradient(140deg,#FFC868,#F2A93B);
+    box-shadow:0 4px 14px -5px rgba(242,169,59,.9);
+  }
+  .go svg{ width:12px; height:12px; fill:none; stroke:#20160a; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round; }
+  /* 玩法标签 */
+  .tags{ display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
+  .tags i{
+    font-style:normal; font-size:9.5px; letter-spacing:.6px;
+    padding:2.5px 7px; border-radius:999px;
+    color:#A9B3C1; background:rgba(255,255,255,.055); border:1px solid rgba(255,255,255,.07);
   }
 
-  /* 其余游戏：两列网格 */
+  /* ---- 两列网格 ---- */
   .grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:var(--gap); }
   .card.mini .ph{ font-size:24px; }
-  .card.mini h2{ font-size:14.5px; }
-  .card.mini p{ font-size:11px; }
+  .card.mini .body h2{ font-size:13.5px; }
+  .card.mini .body p{ font-size:10.5px; }
+  .card.mini .body{ padding:10px 11px 12px; }
+  /* 「我的」标记：左下角一枚很淡的金色小圆点 + 文案 */
+  .card.mine .body h2::after{
+    content:"我的"; margin-left:6px; vertical-align:1px;
+    font-size:9px; font-weight:600; letter-spacing:.5px; color:var(--gold);
+    padding:1.5px 5px; border-radius:999px;
+    background:rgba(242,169,59,.12); border:1px solid rgba(242,169,59,.24);
+  }
 
-  .footer{ text-align:center; color:#5a6380; font-size:11px; letter-spacing:2px; padding-top:14px; }
+  .footer{ text-align:center; color:var(--t3); font-size:10.5px; letter-spacing:2px; padding:18px 0 6px; }
 
-  /* ===== 动效：桌面悬浮上浮 + 边缘变亮 ===== */
+  /* ---- 交互反馈 ---- */
   @media (hover:hover) and (pointer:fine){
     .card:hover{
       transform:translateY(-3px);
       border-color:var(--line-hi);
-      box-shadow:0 8px 22px rgba(0,0,0,.42), 0 0 24px -8px rgba(127,156,255,.45);
+      box-shadow:0 10px 26px rgba(0,0,0,.46), 0 0 26px -9px rgba(242,169,59,.5);
     }
     .card:hover .thumb img{ transform:scale(1.05); }
-    .card:hover h2{ color:#fff; }
+    .card:hover .body h2{ color:#fff; }
   }
-  /* 动效：按下轻微按压反馈（含手机） */
-  .card:active{
-    transform:scale(.976);
-    border-color:var(--line-hi);
-  }
+  .card:active{ transform:scale(.977); border-color:var(--line-hi); }
   .card:active .thumb img{ filter:brightness(.86); }
+  .card:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
 
   @media (prefers-reduced-motion:reduce){
     .card, .thumb img{ transition:none; }
   }
 
-  /* ===== 游戏运行视图 ===== */
-  #player{ position:fixed; inset:0; z-index:50; background:#0a0e1a; display:none; }
+  /* ===================== 游戏运行视图 ===================== */
+  #player{ position:fixed; inset:0; z-index:50; background:var(--bg); display:none; }
   #player.on{ display:block; }
-  #player iframe{ width:100%; height:100%; border:0; display:block; background:#0a0e1a; }
+  #player iframe{ width:100%; height:100%; border:0; display:block; background:var(--bg); }
+
+  /* 加载指示：切游戏时不再是白屏等 */
+  #loading{
+    position:absolute; inset:0; z-index:2;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    background:var(--bg); color:var(--t2); font-size:12.5px; letter-spacing:1.5px;
+    opacity:0; pointer-events:none; transition:opacity .28s ease;
+  }
+  #loading.on{ opacity:1; }
+  #loading i{
+    width:15px; height:15px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.13); border-top-color:var(--gold);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
 
   #backBtn{
     position:fixed; top:calc(10px + var(--safe-t)); left:12px; z-index:60;
     display:none; align-items:center; gap:6px;
     padding:8px 16px 8px 12px; border-radius:999px;
-    background:rgba(12,17,32,.78); color:#fff; font-size:13px; font-weight:600;
+    background:rgba(14,17,22,.80); color:#fff; font-size:13px; font-weight:600;
     border:1px solid rgba(255,255,255,.16);
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-    cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,.38);
+    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px);
+    cursor:pointer; box-shadow:0 3px 14px rgba(0,0,0,.42);
   }
   #backBtn.on{ display:flex; }
   #backBtn:active{ transform:scale(.93); }
@@ -190,14 +258,23 @@
   <!-- 主页：游戏选择 -->
   <div id="home">
     <div class="hero">
-      <div class="logo">🎮</div>
-      <h1>游戏合集</h1>
-      <p>选 一 个，开 始 玩</p>
+      <div class="mark">🍇</div>
+      <div class="txt">
+        <h1>梦瑞集</h1>
+        <p>离 线 小 游 戏 合 集</p>
+      </div>
+      <div class="stat">
+        <b id="hudCount">0</b>
+        <span>款可玩</span>
+      </div>
     </div>
 
     <div id="list">
+      <!-- 主推：聚果拾趣（最新上线，置于首位） -->
+      <div id="hero"></div>
+
       <div class="section-title">我 的 游 戏</div>
-      <div class="featured" id="featured"></div>
+      <div class="grid" id="mine"></div>
 
       <div class="section-title">精 选 游 戏</div>
       <div class="grid" id="grid"></div>
@@ -208,6 +285,7 @@
 
   <!-- 游戏运行视图 -->
   <div id="player">
+    <div id="loading"><i></i>加载中…</div>
     <iframe id="gameFrame" title="game"></iframe>
   </div>
   <button id="backBtn" aria-label="返回主页">
@@ -220,14 +298,22 @@
   var player  = document.getElementById('player');
   var frame   = document.getElementById('gameFrame');
   var backBtn = document.getElementById('backBtn');
+  var loading = document.getElementById('loading');
   var inGame  = false;
 
-  // ===== 置顶：我的游戏 =====
-  var FEATURED = [
-    { f:'华容道.html', c:'封面/华容道.jpg', i:'🚗', n:'6×6 华容道',
-      d:'滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。', badge:'我的' },
-    { f:'水果叠叠乐.html', c:'封面/水果叠叠乐.jpg', i:'🍉', n:'水果叠叠乐',
-      d:'点击相同水果消除进槽，槽满即输，清空棋盘过关，轻松解压。', badge:'我的' }
+  // ===== 主推（最新上线，排在最前）=====
+  var HERO = {
+    f:'聚果拾趣.html', c:'封面/水果叠叠乐.jpg', i:'🍇', n:'聚果拾趣',
+    d:'七种果趣循环：同果锁 · 双果链 · 遮帘 · 炸弹 · 彩虹 · 冰冻 · 封蜡。棋盘大小固定，先取后凑三，凑满七格就输。',
+    tags:['消除','益智','七种玩法']
+  };
+
+  // ===== 我的游戏 =====
+  var MINE = [
+    { f:'华容道.html',     c:'封面/华容道.jpg',       i:'🚗', n:'6×6 华容道',
+      d:'滑动方块，把红色小车挪出出口。关卡自动生成，越玩越烧脑。' },
+    { f:'水果叠叠乐.html', c:'封面/水果叠叠乐.jpg',   i:'🍉', n:'水果叠叠乐',
+      d:'经典版水果消除，规则更简单，随手玩两局。' }
   ];
 
   // ===== 精选游戏（文件名 / 封面 / 兜底表情 / 名称 / 简介） =====
@@ -251,7 +337,7 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  // 缩略图：img 加载失败时自动露出兜底表情
+  // 缩略图：封面加载失败时自动露出兜底表情
   function thumbHtml(g) {
     return '<div class="thumb">'
       + '<span class="ph">' + esc(g.i) + '</span>'
@@ -259,32 +345,39 @@
       + '</div>';
   }
 
-  var featureHtml = '';
-  for (var a = 0; a < FEATURED.length; a++) {
-    var fc = FEATURED[a];
-    featureHtml += '<div class="card big" role="button" tabindex="0" data-src="' + esc(fc.f) + '"'
-      + ' aria-label="打开 ' + esc(fc.n) + '">'
-      + thumbHtml(fc)
-      + '<div class="body">'
-      +   '<div class="txt"><h2>' + esc(fc.n) + '</h2><p>' + esc(fc.d) + '</p></div>'
-      +   '<span class="badge">' + esc(fc.badge) + '</span>'
-      + '</div></div>';
-  }
-  document.getElementById('featured').innerHTML = featureHtml;
+  // ---- 主推大卡 ----
+  document.getElementById('hero').innerHTML =
+    '<div class="card hero-card" role="button" tabindex="0" data-src="' + esc(HERO.f) + '"'
+    + ' aria-label="打开 ' + esc(HERO.n) + '">'
+    +   '<span class="flag">NEW</span>'
+    +   thumbHtml(HERO)
+    +   '<div class="body">'
+    +     '<h2>' + esc(HERO.n) + '</h2>'
+    +     '<p>' + esc(HERO.d) + '</p>'
+    +     '<div class="tags">' + HERO.tags.map(function (t) { return '<i>' + esc(t) + '</i>'; }).join('') + '</div>'
+    +     '<span class="go">开始玩 <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>'
+    +   '</div>'
+    + '</div>';
 
-  var gridHtml = '';
-  for (var k = 0; k < GAMES.length; k++) {
-    var gm = GAMES[k];
-    gridHtml += '<div class="card mini" role="button" tabindex="0" data-src="' + esc(gm.f) + '"'
-      + ' aria-label="打开 ' + esc(gm.n) + '">'
-      + thumbHtml(gm)
-      + '<div class="body"><h2>' + esc(gm.n) + '</h2><p>' + esc(gm.d) + '</p></div>'
-      + '</div>';
+  // ---- 两列网格 ----
+  function gridHtml(list, mine) {
+    var out = '';
+    for (var k = 0; k < list.length; k++) {
+      var g = list[k];
+      out += '<div class="card mini' + (mine ? ' mine' : '') + '" role="button" tabindex="0"'
+        + ' data-src="' + esc(g.f) + '" aria-label="打开 ' + esc(g.n) + '">'
+        + thumbHtml(g)
+        + '<div class="body"><h2>' + esc(g.n) + '</h2><p>' + esc(g.d) + '</p></div>'
+        + '</div>';
+    }
+    return out;
   }
-  document.getElementById('grid').innerHTML = gridHtml;
+  document.getElementById('mine').innerHTML = gridHtml(MINE, true);
+  document.getElementById('grid').innerHTML = gridHtml(GAMES, false);
 
-  document.getElementById('footer').textContent =
-    '共 ' + (FEATURED.length + GAMES.length) + ' 款 · 离线可玩';
+  var total = 1 + MINE.length + GAMES.length;
+  document.getElementById('hudCount').textContent = total;
+  document.getElementById('footer').textContent = '共 ' + total + ' 款 · 全部离线可玩 · 数据存在本机';
 
   // 封面临时缺失时退回表情占位，不影响点击
   Array.prototype.forEach.call(document.querySelectorAll('.thumb img'), function (im) {
@@ -300,6 +393,7 @@
   function openGame(src) {
     if (!src) return;
     inGame = true;
+    loading.classList.add('on');
     player.classList.add('on');
     backBtn.classList.add('on');
     frame.src = src;
@@ -311,9 +405,15 @@
     inGame = false;
     player.classList.remove('on');
     backBtn.classList.remove('on');
+    loading.classList.remove('on');
     frame.src = 'about:blank';
     if (!fromPop && history.state && history.state.game) history.back();
   }
+
+  // 游戏加载完成后收起加载指示（about:blank 那次的 load 要忽略）
+  frame.addEventListener('load', function () {
+    if (inGame && frame.src && frame.src.indexOf('about:blank') < 0) loading.classList.remove('on');
+  });
 
   Array.prototype.forEach.call(document.querySelectorAll('.card'), function (card) {
     card.addEventListener('click', function () {
@@ -338,6 +438,18 @@
     if (now - lastTouch < 320) e.preventDefault();
     lastTouch = now;
   }, { passive: false });
+
+  // 供验收脚本使用（不影响正常使用）
+  window.__home = {
+    count: total,
+    cards: Array.prototype.map.call(document.querySelectorAll('.card'), function (c) {
+      var h2 = c.querySelector('h2');
+      return { src: c.getAttribute('data-src'), name: h2 ? h2.textContent : '', hero: c.classList.contains('hero-card') };
+    }),
+    open: openGame, close: closeGame,
+    inGame: function () { return inGame; },
+    playerSrc: function () { return frame.getAttribute('src') || ''; }
+  };
 })();
 </script>
 </body>
