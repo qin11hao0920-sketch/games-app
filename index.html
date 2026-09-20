@@ -310,7 +310,7 @@
   // ===== 主推（最新上线，排在最前）=====
   var HERO = {
     f:'聚果拾趣.html', c:'封面/水果叠叠乐.jpg', i:'🍇', n:'聚果拾趣',
-    d:'七种果趣循环：同果锁 · 双果链 · 遮帘 · 炸弹 · 彩虹 · 冰冻 · 封蜡。棋盘大小固定，先取后凑三，凑满七格就输。',
+    d:'七种果趣循环：同果锁 · 双果链 · 遮帘 · 炸弹 · 彩虹 · 冰冻 · 封蜡。棋盘按屏幕铺满，先取后凑三，凑满七格就输。',
     tags:['消除','益智','七种玩法']
   };
 
@@ -402,6 +402,25 @@
 
   // ===== 打开 / 关闭游戏 =====
   // 打开时压入一条历史记录，这样安卓返回手势/返回键会先回主页而不是直接退出 App
+  var readyTimer = 0;
+
+  /* 遮罩只该遮住「iframe 还是一片空白」的那一小段时间。
+     v0.12：聚果拾趣这类游戏改成了「外壳先上屏、棋盘下一帧再算」（重关要算 1 秒以上），
+     而 iframe 的 load 事件会被排在游戏那段同步计算之后才触发 ——
+     只等 load 的话，玩家会多盯一秒多的空白遮罩，看不到游戏自己那句「正在布置棋盘…」。
+     所以再加一条更早的判据：iframe 文档一旦不再是 loading（脚本同步段已跑完）就先撤遮罩。 */
+  function frameReadable() {
+    try {
+      var d = frame.contentDocument;
+      return !!(d && d.readyState !== 'loading');
+    } catch (e) { return false; }
+  }
+  function watchFrameReady() {
+    if (!inGame) return;
+    if (frameReadable()) { loading.classList.remove('on'); return; }
+    readyTimer = setTimeout(watchFrameReady, 60);
+  }
+
   function openGame(src) {
     if (!src) return;
     inGame = true;
@@ -409,12 +428,15 @@
     player.classList.add('on');
     backBtn.classList.add('on');
     frame.src = src;
+    clearTimeout(readyTimer);
+    readyTimer = setTimeout(watchFrameReady, 80);
     history.pushState({ game: src }, '');
   }
 
   function closeGame(fromPop) {
     if (!inGame) return;
     inGame = false;
+    clearTimeout(readyTimer);
     player.classList.remove('on');
     backBtn.classList.remove('on');
     loading.classList.remove('on');

@@ -144,6 +144,22 @@ header::before{
 
 /* ===== 棋盘 ===== */
 #boardWrap{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; position:relative; }
+/* 启动提示（v0.12）：这一关的「生成 + 可解性验证」要跑真实搜索（实测 2~320ms，
+   手机上还要乘几倍），没必要让玩家对着空棋盘发愣。外壳先上屏、棋盘下一帧再算，
+   这期间显示这行字。算完由 JS 摘掉 .on。 */
+#boot{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  display:none; align-items:center; gap:9px;
+  color:#8A7A5C; font-size:13px; letter-spacing:1px; white-space:nowrap;
+}
+#boot.on{ display:flex; }
+#boot i{
+  width:16px; height:16px; border-radius:50%;
+  border:2px solid rgba(160,140,100,.28); border-top-color:#C9A458;
+  animation:bootspin .8s linear infinite;
+}
+@keyframes bootspin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce){ #boot i{ animation:none; } }
 #table{
   position:absolute; left:50%; top:50%;
   transform:translate(-50%,-50%);
@@ -344,12 +360,71 @@ header::before{
 #boomNo{ background:rgba(255,255,255,.18); color:#FFF8E8; }
 #boomBar button:active{ transform:scale(.96); }
 
-/* 双果链：两端卡片朝伙伴一侧的挂钩 */
-.hook{ position:absolute; z-index:7; width:30%; height:30%; }
-.hook.l{ left:-6%; } .hook.r{ right:-6%; }
-.hook.t{ top:-6%; } .hook.b{ bottom:-6%; }
+/* ===== 双果链：拴在一起的两张牌（v0.12 第 1 项）=====
+   旧版只在两牌之间画了一根灰线，而且是画在牌底下（#links z-index 6 < 牌 10），
+   牌一挨近线就整根藏进牌缝里 —— 玩家完全看不出哪两张是相连的。
+   现在三件事一起上：牌身一圈金边、两端各挂一枚朝内的铜环钩扣、
+   两环之间用一串会露在牌外的链珠连起来（#links 提到所有牌与遮帘之上）。 */
+.card.chain .face{
+  box-shadow:0 2px 0 rgba(122,92,50,.20), 0 3px 7px rgba(122,92,50,.11),
+             0 0 0 2.5px rgba(206,158,66,.95), 0 0 13px rgba(230,182,88,.55), inset 0 1px 0 #fff;
+}
+.card.chain .face{ animation:chainGlow 2.1s ease-in-out infinite; }
+@keyframes chainGlow{
+  0%,100%{ box-shadow:0 2px 0 rgba(122,92,50,.20), 0 3px 7px rgba(122,92,50,.11),
+                       0 0 0 2.5px rgba(206,158,66,.95), 0 0 9px rgba(230,182,88,.40), inset 0 1px 0 #fff; }
+  50%    { box-shadow:0 2px 0 rgba(122,92,50,.20), 0 3px 7px rgba(122,92,50,.11),
+                       0 0 0 3px rgba(232,186,92,1), 0 0 18px rgba(236,190,96,.78), inset 0 1px 0 #fff; }
+}
+/* 钩扣：挂在卡片朝向伙伴的那条边上（r=朝右 / l=朝左 / t=朝上 / b=朝下）。
+   取 46% 是个折中：再小就只剩一颗珠子的观感，再大就会盖住水果本体。
+   中心落在「离该边 8%」的位置 —— 环骑在牌边上，露在牌外的那一半正好接住链珠。 */
+.hook{
+  position:absolute; z-index:7; width:46%; height:46%; pointer-events:none;
+  filter:drop-shadow(0 1px 2px rgba(74,52,18,.5));
+}
+.hook.l{ left:-15%; top:27%; }
+.hook.r{ right:-15%; top:27%; }
+.hook.t{ top:-15%; left:27%; }
+.hook.b{ bottom:-15%; left:27%; }
 .hook svg{ width:100%; height:100%; display:block; }
-#links{ position:absolute; left:0; top:0; z-index:6; pointer-events:none; overflow:visible; }
+.hook.r svg{ transform:rotate(0deg); }
+.hook.l svg{ transform:rotate(180deg); }
+.hook.t svg{ transform:rotate(-90deg); }
+.hook.b svg{ transform:rotate(90deg); }
+/* 「链」角标（左上角圆牌）：钩扣只说明「朝哪边连着」，角标才把
+   「这张牌属于一条双果链」说明白 —— 被压住的牌也会带着它，卡片尺寸一变就跟着缩放。
+   字号用 --cardpx（layout() 每次重排写入）换算，不写死 px。 */
+.chainbadge{
+  position:absolute; top:-7%; left:-7%; z-index:8; pointer-events:none;
+  width:40%; height:40%; box-sizing:border-box; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; border:1.5px solid #8A6A32;
+  background:linear-gradient(180deg,#F7D68A,#D9A93E);
+  color:#5E3F10; font-weight:700;
+  font-size:calc(var(--cardpx, 48px) * 0.235);
+  font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+  box-shadow:0 1px 3px rgba(74,52,18,.42);
+}
+/* 链珠：画在所有牌之上（z-index 45 > 牌 10+层*10、遮帘 13+层*10），
+   否则牌一挨近，链子就只剩牌缝里那点灰痕。 */
+#links{ position:absolute; left:0; top:0; z-index:45; pointer-events:none; overflow:visible; }
+/* 货栏只剩 1 个空位时的「点不动」提示（规格《两个卡片的锁链》第 4.3 条：
+   被锁链锁住的卡片应有视觉提示，如轻微变暗或锁链闪烁红色）。
+   双果链必须一次收两张，空位只剩 1 个时点击本来就无效 —— 与其等玩家点了才弹提示，
+   不如先把链子变红闪起来。类名由 updateHUD() 按「空位数」切换。 */
+.card.chainblock .chainbadge{
+  background:linear-gradient(180deg,#F2A08C,#C6462C);
+  border-color:#8E2E1C; color:#FFF4EF;
+  animation:chainWarn .72s ease-in-out infinite;
+}
+.card.chainblock .hook svg circle,
+.card.chainblock .hook svg rect{ stroke:#A03A22; }
+.card.chainblock .face{ filter:brightness(.93) saturate(.92); }
+@keyframes chainWarn{
+  0%,100%{ box-shadow:0 1px 3px rgba(74,52,18,.42); }
+  50%    { box-shadow:0 0 0 3px rgba(214,60,34,.45), 0 1px 3px rgba(74,52,18,.42); }
+}
 
 /* 货栏里未解封的封蜡牌 */
 .titem.sealed{ box-shadow:0 0 0 2.5px rgba(198,176,122,.9) inset, 0 1px 0 rgba(122,92,50,.18); }
@@ -755,7 +830,7 @@ header::before{
     </div>
   </header>
 
-  <div id="boardWrap"><div id="table"></div><div id="board"></div></div>
+  <div id="boardWrap"><div id="table"></div><div id="board"></div><div id="boot"><i></i>正在布置棋盘…</div></div>
 
   <div id="trayBar">
     <div class="trayhead">
@@ -784,6 +859,11 @@ header::before{
 <script>
 (function () {
 'use strict';
+/* 启动计时起点：脚本一开始执行就取。用于统计「脚本开始 → 首帧可玩」的总耗时
+   （验收「从主页进游戏有点慢」）。nowMs 是 p4 里的函数声明，同处一个作用域，
+   函数声明会提升，这里可以直接调。 */
+var BOOT_T0 = (window.performance && performance.now) ? performance.now() : Date.now();
+var bootMs = 0;
 
 /* ============================================================
    1. 水果图案（自绘 SVG：形状 + 配色双重区分）
@@ -859,6 +939,18 @@ var WAX_OV = '<svg viewBox="0 0 100 100">'
   + '<g stroke="rgba(226,210,172,.95)" stroke-width="7" stroke-linecap="round" fill="none">'
   + '<path d="M14 4 C 4 14, 4 30, 12 42"/><path d="M86 4 C 96 14, 96 30, 88 42"/>'
   + '<path d="M14 96 C 4 86, 4 70, 12 58"/><path d="M86 96 C 96 86, 96 70, 88 58"/></g></svg>';
+/* 双果链两端的钩扣（v0.12 第 1 项）
+   图案朝右画：一枚铜环 + 右侧一节链环。卡片按「伙伴在哪个方向」用 CSS 旋转它
+   （r=不转 / l=180° / t=-90° / b=90°），于是两端钩扣永远面对面。
+   环里不再写字：牌小的时候（47px）字号只有 8px，看不清反而糊成一团；
+   「这是链」这件事交给牌角那枚 .chainbadge（链字圆牌）去说。 */
+var HOOK_SVG = '<svg viewBox="0 0 100 100">'
+  + '<circle cx="44" cy="50" r="31" fill="#F3CE7A" stroke="#8A6A32" stroke-width="7"/>'
+  + '<circle cx="44" cy="50" r="31" fill="none" stroke="#FFF8E0" stroke-width="2.6" opacity=".9"/>'
+  + '<circle cx="44" cy="50" r="15" fill="none" stroke="#C9A458" stroke-width="4" opacity=".75"/>'
+  + '<rect x="70" y="38" width="27" height="24" rx="12" fill="none" stroke="#B08C46" stroke-width="7"/>'
+  + '<rect x="70" y="38" width="27" height="24" rx="12" fill="none" stroke="#FFF8E0" stroke-width="1.8" opacity=".7"/>'
+  + '</svg>';
 
 /* ============================================================
    2. 底层形状库
@@ -907,21 +999,47 @@ var SHAPES = {
    1～70 关重新做过真实可解性验证：70/70 通过。 */
 var MAXGW=9, MAXGH=12, ASPECT=1.35, MAX_LV=999;
 /* ---- v0.10 第 2 项：固定棋盘画布（逻辑格）----
-   所有关卡都用同一块画布渲染，内容在其中居中；cell 只由画布和可用区决定，
-   因此「棋盘大小」「卡片大小」在每一关都完全一致。
+   【v0.12 起已不再用它算 cell】保留这两个常数只作为「生成期自检上界」：
+   它们仍是 unitsX/unitsY 的数学上界，用来判断某关内容是否超出设计范围。
 
-   画布取值必须 ≥ 任意关卡的内容尺寸（p3 的 unitsX/unitsY），否则「随内容放大」的
-   兜底一旦触发，cell 就又会跟着关卡变，卡片大小重新不一致。这里取的是硬上界：
-     unitsX = (maxX-minX) + CARD + 0.7，而 (maxX-minX) ≤ MAXGW-1
-     → unitsX ≤ 8 + 0.92 + 0.7 = 9.62
-     unitsY ≤ 11 + 0.92 + 0.7 = 12.62
-   实测 1～999 关（跳过生成失败的 10 关）最大值正是 9.62 / 12.62（第 8 关），
-   与公式上界吻合，所以这两个常数能覆盖全部关卡。 */
-var FRAME_X=9.62, FRAME_Y=12.62;
+   v0.12 的布局改了：cell 改用「本关自己的 unitsX/unitsY」算，
+   棋盘正好收在内容外沿并吃满可用区（详见 p4 的 layout()）。
+   原因：用固定上界画布时，各关内容只占画布的一半左右 ——
+   实测内容宽 5.62～8.62、高 8.62～11.62，而画布是 9.62×12.62，
+   于是卡片常年 45px，比货栏卡槽（62px）还小，棋盘里大片空白。
+
+   画布取值必须 ≥ 任意关卡的内容尺寸（p3 的 unitsX/unitsY）。这里取的是硬上界：
+     unitsX = (maxX-minX) + CARD + 2*EXT_PAD，而 (maxX-minX) ≤ MAXGW-1
+     → unitsX ≤ 8 + 0.96 + 0.12 = 9.08
+     unitsY ≤ 11 + 0.96 + 0.12 = 12.08
+   【v0.12 之二】unitsX/unitsY 改成按「牌的实际外沿」算（见 p3），不再用形状格位 bbox，
+   于是这两个上界只是自检参考，不再是实际取值。 */
+var FRAME_X=9.08, FRAME_Y=12.08;
+/* #table 会在棋盘外沿再各扩 TABLE_PAD px（见 p4 的 layout），
+   算 cell 时先把这段预留掉，保证「棋盘 + 外扩」仍落在可用区内，
+   顶部信息区 / 货栏 / 道具栏 / 金币与关卡名一律不会被压到。
+   v0.12：12 → 6。棋盘外沿那圈木框只是视觉包边，12px 在手机上白吃掉 24px 宽度
+   （卡片因此小了约 3%），收到 6px 后包边仍然看得出，卡片更大。 */
+var TABLE_PAD=6;
 /* ---- v0.10 第 3 项：所有文案提示停留 10 秒 ---- */
 var TOAST_MS=10000;
 var TRAY_N=7;            // 货栏格数
-var CARD=0.92;           // 牌的边长（逻辑格单位）
+/* 牌的边长（逻辑格单位）。
+   v0.12：0.92 → 0.96。相邻同层牌之间的缝隙从 0.08 格收到 0.04 格，卡片大了一圈。
+   安全性：CARD 只被规则层用作遮挡判定 `|dx|<CARD && |dy|<CARD`
+   （p3 的 computeLocked / 同层计数），而两层之间的坐标差只可能是
+   0 / 0.25 / 0.5 / 0.75（OFFS 里各层偏移两两相差的最大值），
+   跨越一个格位时又是 ≥1 —— 也就是说 CARD 取 (0.75, 1.0] 之间任何值，
+   所有 `|dx|<CARD` 的真假都一模一样。所以 0.92→0.96 不改任何可解性、不改任何关卡布局，
+   只改「牌画多大」与 unitsX/unitsY 的留白。 */
+var CARD=0.96;
+/* 牌的实际外沿之外再留的边距（逻辑格，单边）。
+   v0.12：以前 unitsX = (形状格位 bbox) + CARD + 0.7 —— 0.7 全部堆在右边和下边
+   （offX/offY 恒为 0），于是棋盘里出现「左上空、右下空」的不对称留白，
+   个别关（工字形、封蜡）还会因为顶层的 0.25/0.5 偏移让牌压出棋盘 2~3px。
+   现在改成：按「牌的实际外沿」算 units，再把坐标平移归零、两边各留 EXT_PAD，
+   棋盘正好套住牌、四边留白一致、也不会再溢出。 */
+var EXT_PAD=0.06;
 var FLY_MS=240;          // 飞入货栏动效时长
 var FINAL_MS=760;        // 最终三消动效时长（v0.9 第 3.3 节：700~800ms，与 CSS finalSpin 一致）
 var OFFS=[[0,0],[0.5,0.5],[0.25,0.75],[0.75,0.25],[0.5,0],[0.75,0.5],[0.25,0.5]];  // 各层错位
@@ -2312,7 +2430,9 @@ function genCards(cfg, seed){
     if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x;
     if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y;
   });
-  var unitsX=(maxX-minX)+CARD+0.7, unitsY=(maxY-minY)+CARD+0.7;
+  /* 这里的 unitsX/unitsY 只是「按形状格位 bbox 的兜底值」，真正的取值在下面
+     按牌的实际外沿重算（含层间偏移），见 placeCards 末尾那段注释。 */
+  var unitsX=(maxX-minX)+CARD+EXT_PAD*2, unitsY=(maxY-minY)+CARD+EXT_PAD*2;
 
   /* ① 先只排位置和层级，不发水果：炸弹落点只依赖几何关系，
      先定炸弹再发水果，才能把爆破区内的牌发成整组同款。 */
@@ -2585,6 +2705,23 @@ function genCards(cfg, seed){
     }
   }
   computeLocked({ cards:cards, byId:{}, tray:[], pairs:pairs, cfg:cfg });
+  /* ---- v0.12：unitsX/unitsY 改成按「牌的实际外沿」算 ----
+     以前这里用的是「形状格位」的 bbox（base.concat(padFlat)），再加 CARD+0.7。
+     问题是各层的 x/y 还要再加层间偏移（OFFS 里最大 0.75），于是：
+       · 0.7 的留白全部落在右边和下边（offX/offY 恒为 0）→ 棋盘里左上空、右下空；
+       · 工字形 / 封蜡那几关，顶层偏移把牌顶到了 bbox 之外 → 牌压出棋盘 2~3px。
+     现在按牌的实际 min/max 算，并把坐标整体平移归零（纯平移，不改任何相对距离，
+     所以遮挡判定与新解集完全不变），四边各留 EXT_PAD。 */
+  var cminX=1e9,cmaxX=-1e9,cminY=1e9,cmaxY=-1e9;
+  cards.forEach(function(c){
+    if(c.x<cminX)cminX=c.x; if(c.x>cmaxX)cmaxX=c.x;
+    if(c.y<cminY)cminY=c.y; if(c.y>cmaxY)cmaxY=c.y;
+  });
+  if(cards.length){
+    cards.forEach(function(c){ c.x-=cminX; c.y-=cminY; });
+    unitsX=(cmaxX-cminX)+CARD+EXT_PAD*2;
+    unitsY=(cmaxY-cminY)+CARD+EXT_PAD*2;
+  }
   /* 开局必须至少有一个合法操作：一上来就没得点等于死局（第 5.1 节第 5 条：
      生成期就要用真实规则验证）。这里用的是与真实对局同一套 simMoves。 */
   var startCtx=newCtx(cfg, cards, pairs, curtains);
@@ -2764,6 +2901,10 @@ var tools={ shuffle:{free:0,stock:0}, undo:{free:0,stock:0}, scissor:{free:0,sto
 var running=false, busy=false, busyAt=0, opSerial=0;
 var paused=false, stuck=false, finalLock=false, finalCommitted=false, winGuard=false, endGuard=false;
 var waxMeltCount=0;              /* 封蜡融化动效触发次数（验收用） */
+/* 进入关卡时的生成+可解性验证耗时（验收「从主页进游戏有点慢」用）
+   buildVerified 会跑 simulate(90k 节点) 做真实可解性验证，是启动期最重的一段，
+   把它单独计时，才能在「进关慢」和「其它初始化慢」之间分清责任。 */
+var lastBuildMs=0, lastBuildTries=0, lastBuildNodes=0, lastBuildDetail=[];
 var autoUnlockCount=0;           /* v0.11 第 1 项：死局自愈松开的同果锁张数（验收用） */
 var autoUnlockLog=[];            /* v0.11 第 1 项：每次自愈的证据 [{lv, ids, before, after}] */
 var teachUntil=0, curtainDown=[true,false];
@@ -2782,6 +2923,13 @@ function rndNext(){
 }
 function later(fn, ms){ var t=setTimeout(function(){ fn(); }, ms); pendingTimers.push(t); return t; }
 function clearLater(){ pendingTimers.forEach(function(t){ clearTimeout(t); }); pendingTimers=[]; }
+/* 毫秒计时（生成/验证耗时统计用）：优先用高精度时钟，退化到 Date.now() */
+function nowMs(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+/* 启动提示「正在布置棋盘…」的开关（外壳先上屏、棋盘下一帧再算） */
+function bootHint(on){
+  var el=$('#boot');
+  if(el) el.classList.toggle('on', !!on);
+}
 
 function setPhase(p){
   running = (p==='play' || p==='stuck');
@@ -2796,7 +2944,32 @@ function isPairLinked(c){
   var p=G.pairs[c.pairId];
   return !!(p && !p.broken);
 }
-function cardHTML(c){
+/* 双果链（v0.12 第 1 项）：拿到这张牌的「链伴」，只在两端都在盘面上时才算数。
+   一端已经进槽/被收走的话，这张牌在观感上就不再是「相连的」了，
+   再挂一枚钩扣会让人以为链子还连着。 */
+function pairPartner(c){
+  if(!G || !c || c.pairId<0 || c.state!=='board') return null;
+  var p=G.pairs[c.pairId];
+  if(!p || p.broken) return null;
+  var o=G.byId[c.id===p.a ? p.b : p.a];
+  return (o && o.state==='board') ? o : null;
+}
+/* 钩扣挂哪条边：横向差更大就左右，否则上下（跟着伙伴的实际方位走） */
+function pairSide(c, o){
+  var dx=o.x-c.x, dy=o.y-c.y;
+  if(Math.abs(dx)>=Math.abs(dy)) return dx>=0 ? 'r' : 'l';
+  return dy>=0 ? 'b' : 't';
+}
+/* 蜡壳要不要画出来（v0.12 修复）
+   封蜡牌的 sp 会一直保留 'wax' —— 因为第 21.4.1 节要求「同一张牌下次入栏要重新封蜡」，
+   所以解封时只能把 sealed 置 false，不能清 sp。于是「货栏里 sealed===false 但 sp==='wax'」
+   就是「已解封」这个状态，只看 sp 会一直画着蜡壳：角标（按 sealed 渲染）没了、壳还在。
+   盘面上没有 sealed 语义（board 牌 sealed 恒为 false），所以盘面一律按 sp 画。 */
+function waxShellOn(c, inTray){
+  if(!c || c.sp!=='wax') return false;
+  return inTray ? !!c.sealed : true;
+}
+function cardHTML(c, inTray){
   var base;
   if(c.kind==='bomb') base=BOMB_SVG;
   /* 彩虹覆盖层（第 9.1 节）：整层盖住底下水果，不显示底层图案 */
@@ -2804,7 +2977,7 @@ function cardHTML(c){
   else base=(FRUITS[c.fruit] ? FRUITS[c.fruit].s : '');
   var ov='';
   if(c.sp==='ice' && c.iceLeft>0) ov += '<div class="ov ice">'+ICE_OV+'</div>';
-  if(c.sp==='wax') ov += '<div class="ov wax">'+WAX_OV+'</div>';
+  if(waxShellOn(c, inTray)) ov += '<div class="ov wax">'+WAX_OV+'</div>';
   if(c.sp==='lock') ov += '<div class="ov lock">'+LOCK_OV+'</div>';
   return base+ov;
 }
@@ -2814,10 +2987,16 @@ function paintCard(c){
   if(c.kind==='bomb') cls+=' sp-bomb';
   if(c.rainbow) cls+=' sp-rainbow';
   if(c.sp==='ice' && c.iceLeft>0) cls+=' sp-ice';
+  /* 双果链：给两端都挂上金边 + 朝内的钩扣（钩扣是 .face 的兄弟节点：
+     .face 有 overflow:hidden，挂进去会被圆角裁掉半枚）。 */
+  var partner=pairPartner(c);
+  if(partner) cls+=' chain';
   c.el.className=cls + (c.locked?' locked':'') + (c.state!=='board'?' gone':'');
   c.el.setAttribute('data-type', c.rainbow ? -1 : c.fruit);
   c.el.setAttribute('data-layer', c.layer);
   c.el.innerHTML='<div class="face">'+cardHTML(c)+'</div>'
+    + (partner ? '<div class="hook '+pairSide(c,partner)+'">'+HOOK_SVG+'</div>'
+                + '<span class="chainbadge">链</span>' : '')
     + (c.sp==='ice' && c.iceLeft>0 ? '<span class="iceleft">'+c.iceLeft+'</span>' : '');
 }
 function renderBoard(){
@@ -2944,12 +3123,23 @@ function placeCurtains(){
     if(!c || c.state!=='board') return;
     k.el.style.width=size+'px';
     k.el.style.height=size+'px';
-    k.el.style.transform='translate3d('+Math.round(c.x*cell)+'px,'+Math.round(c.y*cell)+'px,0)';
+    /* 必须和 layout() 里卡片的位置用同一套坐标：卡片是 offX + c.x*cell，
+       这里以前漏了 offX/offY，于是遮帘整体平移了半个画布
+       （如 v0.12 的遮帘关 offX=offY=1 个格子），一张牌都盖不住。 */
+    k.el.style.transform='translate3d('+Math.round(offX + c.x*cell)+'px,'
+                        +Math.round(offY + c.y*cell)+'px,0)';
     k.el.style.zIndex=13+c.layer*10;
   });
 }
 /* 遮帘换目标时的淡入已并入 renderCurtains：
    「换目标」和「放下／收起」是两件事，前者要跳过过渡（noanim），后者要播放过渡，不能共用一个函数。 */
+/* 双果链的链珠（v0.12 第 1 项重写）
+   旧版画的是「牌心到牌心」的一根灰线，而且压在牌底下（#links 6 < 牌 10）——
+   本作双果链的两端大多是相邻生成的，牌心距离 ≈ 一个牌宽，
+   于是整根线正好被两张牌吃得干干净净，玩家什么都看不见。
+   现在：① 只画「从 A 的边缘到 B 的边缘」那一段；② 两端贴边时给个外鼓的弧线，
+   保证链珠一定露在牌外面；③ #links 提到所有牌与遮帘之上；
+   ④ 画成一串交替的铜珠/铜环，而不是一根糊在牌上的灰线。 */
 function renderLinks(){
   var svg=board.querySelector('#links');
   if(!svg) return;
@@ -2957,8 +3147,9 @@ function renderLinks(){
   svg.setAttribute('width', bw); svg.setAttribute('height', bh);
   svg.setAttribute('viewBox','0 0 '+bw+' '+bh);
   var size=Math.max(6, Math.round(CARD*cell));
-  var h='<defs><filter id="lnsh" x="-30%" y="-30%" width="160%" height="160%">'
-      + '<feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#5B4636" flood-opacity=".45"/></filter></defs>';
+  var h='<defs><filter id="lnsh" x="-50%" y="-50%" width="200%" height="200%">'
+      + '<feDropShadow dx="0" dy="1.2" stdDeviation="1.5" flood-color="#4A3818" flood-opacity=".5"/>'
+      + '</filter></defs>';
   G.pairs.forEach(function(p){
     if(p.broken) return;
     var a=G.byId[p.a], b=G.byId[p.b];
@@ -2966,11 +3157,38 @@ function renderLinks(){
     var ax=offX + a.x*cell+size/2, ay=offY + a.y*cell+size/2;
     var bx=offX + b.x*cell+size/2, by=offY + b.y*cell+size/2;
     var dx=bx-ax, dy=by-ay, d=Math.hypot(dx,dy)||1;
-    h+='<line x1="'+ax+'" y1="'+ay+'" x2="'+bx+'" y2="'+by+'" stroke="#8A7F6C" stroke-width="'+Math.max(3,size*0.10)+'" stroke-linecap="round" opacity=".9"/>';
+    var ux=dx/d, uy=dy/d, nx=-uy, ny=ux;
+    var r=size*0.50;
+    var sx=ax+ux*r, sy=ay+uy*r;           /* 从 A 牌的边缘起笔 */
+    var ex=bx-ux*r, ey=by-uy*r;           /* 到 B 牌的边缘收笔 */
+    var gap=Math.hypot(ex-sx, ey-sy);
+    /* 两端几乎贴在一起时（相邻生成），贴边那一段长度≈0 —— 直接外鼓出一道弧 */
+    var bulge = gap < size*0.42 ? size*0.52 : Math.min(size*0.30, gap*0.16);
+    var mx=(sx+ex)/2 - nx*bulge, my=(sy+ey)/2 - ny*bulge;
+    var span=gap + Math.abs(bulge)*1.5;
+    var n=Math.max(3, Math.min(7, Math.round(span/(size*0.34)) || 3));
+    var pts=[], i, t, mt;
+    for(i=0;i<n;i++){
+      t=i/(n-1); mt=1-t;
+      pts.push([ mt*mt*sx + 2*mt*t*mx + t*t*ex,
+                 mt*mt*sy + 2*mt*t*my + t*t*ey ]);
+    }
+    var dstr='M'+pts[0][0].toFixed(1)+' '+pts[0][1].toFixed(1);
+    for(i=1;i<n;i++) dstr+=' L'+pts[i][0].toFixed(1)+' '+pts[i][1].toFixed(1);
     h+='<g filter="url(#lnsh)">';
-    [ [ax,ay], [bx,by] ].forEach(function(pt){
-      h+='<circle cx="'+(pt[0]+dx/d*size*0.34)+'" cy="'+(pt[1]+dy/d*size*0.34)+'" r="'+Math.max(4,size*0.13)+'" fill="#6B6154" stroke="#F4EADA" stroke-width="2"/>';
-    });
+    /* 细芯线把链珠串起来（不留白，远看也是一根链子） */
+    h+='<path d="'+dstr+'" fill="none" stroke="#7A5720" stroke-width="'+Math.max(2,size*0.085).toFixed(1)+'"'
+      +' stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>';
+    for(i=0;i<n;i++){
+      var br=size*0.115;
+      if(i%2===0){
+        h+='<circle cx="'+pts[i][0].toFixed(1)+'" cy="'+pts[i][1].toFixed(1)+'" r="'+br.toFixed(1)
+          +'" fill="#F3CE7A" stroke="#8A6A32" stroke-width="'+Math.max(1.4,size*0.042).toFixed(1)+'"/>';
+      } else {
+        h+='<circle cx="'+pts[i][0].toFixed(1)+'" cy="'+pts[i][1].toFixed(1)+'" r="'+br.toFixed(1)
+          +'" fill="#FFFAEA" stroke="#B08C46" stroke-width="'+Math.max(1.8,size*0.055).toFixed(1)+'"/>';
+      }
+    }
     h+='</g>';
   });
   svg.innerHTML=h;
@@ -3055,7 +3273,8 @@ function renderTray(popIdx){
       if(d.classList.contains('finalspin')){ continue; }   /* 收尾旋转中不改动该格 */
       d.className='titem'+(c.kind==='rainbow'?' sp-rainbow':'')+(c.sealed?' sealed':'');
       d.setAttribute('data-type', c.fruit);
-      d.innerHTML=cardHTML(c)+(c.sealed?'<span class="badge wax">蜡</span>':'');
+      /* 第二个参数 = 这是货栏里的格子：蜡壳按 sealed 判断（解封后壳要跟着消失） */
+      d.innerHTML=cardHTML(c, true)+(c.sealed?'<span class="badge wax">蜡</span>':'');
       if(i===popIdx){ d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop'); }
     } else {
       sl.innerHTML='';
@@ -3065,12 +3284,18 @@ function renderTray(popIdx){
   var w=$('#trayWarn');
   if(w) w.textContent = (left<=1 && running && document.body.dataset.phase==='play') ? ('还差 '+left+' 格就满了') : '';
 }
-/* 响应式棋盘与卡片（第 4.2 节 / 第 1.2 节第 12～13 条 / v0.10 第 2 项）
-   计算顺序固定为：读取视口尺寸 → 扣除顶部信息区／货栏／道具栏／安全区与固定 8px 间距
-   → 得到棋盘可用矩形 → 在「固定画布 FRAME_X × FRAME_Y 逻辑格」内算格子边长与卡片尺寸
-   → 卡片坐标 = 画布居中偏移 + 逻辑坐标 × cell。
-   画布尺寸与 cell 都只由可用区决定，不含任何关卡自己的尺寸，所以每一关的
-   「棋盘大小」和「卡片大小」都完全一致。不允许先按固定 430px 或桌面尺寸生成再整体缩放。 */
+/* 响应式棋盘与卡片（第 4.2 节 / 第 1.2 节第 12～13 条 / v0.12 第 3 项）
+   计算顺序：读视口尺寸 → 扣除顶部信息区／货栏／道具栏／安全区与固定 8px 间距
+   → 得到棋盘可用矩形 → 取「本关自己的内容尺寸 unitsX × unitsY」算格子边长
+   → 卡片坐标 = 居中偏移 + 逻辑坐标 × cell。
+   【v0.12 改动】v0.10 时 cell 是用固定画布 FRAME_X × FRAME_Y(9.62×12.62) 算的，
+   各关内容只占画布一半左右 → 卡片常年 45px（比货栏卡槽 62px 还小）、棋盘大片空白。
+   现在改成按本关内容尺寸算，棋盘正好收在内容外沿并吃满可用区：
+   外层再预留 TABLE_PAD 给 #table 的外扩，保证「棋盘 + 外扩」不越界，
+   顶部信息区／金币／关卡名与底部货栏／道具栏一律不会被压到（layoutInfo 里逐项实测）。
+   代价（记录下来，别再当成 bug 查）：各关内容的长宽比不同，cell 由「较紧的那一边」决定，
+   所以卡片尺寸**逐关不同** —— 内容方正的关（如炸弹／封蜡）卡片 ≈ 卡槽大小，
+   内容特别瘦高的关（如工字形冰冻关 5.62×11.62）受屏幕高度限制只能到 ≈ 0.75 卡槽。 */
 var LAY={ rect:{w:0,h:0}, usableW:0, usableH:0, cell:0, card:0, sections:null, frame:null };
 function measureLayout(){
   var app=$('#app');
@@ -3098,38 +3323,86 @@ function measureLayout(){
   return { usableW:usableW, usableH:usableH, vw:vw, vh:vh,
            header:hh, tray:th, tools:lh, padT:padT, padB:padB };
 }
-function layout(){
+/* 卡槽的「自然宽度」= 货栏内宽 7 等分（CSS 里 .slot 就是 1fr + 正方形）。
+   必须能独立算出来：封顶之后 .slot 的实测宽度等于封顶值，再拿它当"自然宽度"
+   就会误判成"没超"，把封顶自己清掉（第一次实现就栽在这上面，1280×800 下反复抖）。 */
+var SLOT_CAP=0;                    /* 当前生效的卡槽封顶值（px），0 = 未封顶 */
+function naturalSlotWidth(tray){
+  if(!tray) return 0;
+  var cs=getComputedStyle(tray);
+  var padL=parseFloat(cs.paddingLeft)||0, padR=parseFloat(cs.paddingRight)||0;
+  var gap=parseFloat(cs.columnGap||cs.gap)||0;
+  var inner=(tray.clientWidth||0)-padL-padR;
+  if(!(inner>0)) return 0;
+  return Math.max(1, (inner-(TRAY_N-1)*gap)/TRAY_N);
+}
+function capSlotTo(cardPx){
+  var tray=$('#tray'); if(!tray) return false;
+  if(!tray.querySelector('.slot')) return false;
+  var nat=naturalSlotWidth(tray);
+  if(!(nat>1)) return false;
+  var cap=Math.round(Math.min(nat, cardPx));
+  if(cap >= nat-0.5){                     /* 本来就不该封顶 */
+    if(SLOT_CAP>0){                       /* 撤掉旧封顶（窗口变大后要能长回去） */
+      SLOT_CAP=0;
+      tray.style.gridTemplateColumns=''; tray.style.justifyContent='';
+      return true;
+    }
+    return false;
+  }
+  if(cap===SLOT_CAP) return false;        /* 已经在封顶值上，稳定 */
+  SLOT_CAP=cap;
+  tray.style.gridTemplateColumns='repeat('+TRAY_N+','+cap+'px)';
+  tray.style.justifyContent='center';
+  return true;
+}
+function layout(depth){
   if(!G) return false;
   var m=measureLayout();
   var availW=Math.max(40, m.usableW);
   var availH=Math.max(40, m.usableH);
-  /* 固定画布：所有关卡共用同一块 FRAME_X × FRAME_Y 的画布。
-     fx/fy 是纯常数，绝不跟随本关的 unitsX/unitsY —— 这是「卡片大小固定」的前提。
-     FRAME_X/FRAME_Y 已按 unitsX/unitsY 的数学上界取值（9.62 / 12.62），
-     实测 1～999 关最大值与之吻合，所以内容永远装得下、不会裁切。 */
-  var fx=FRAME_X, fy=FRAME_Y;
-  /* 同一关所有卡片尺寸一致：cell 只有一个值（第 1.2 节第 13 条） */
-  cell=Math.min(availW/fx, availH/fy);
+  /* v0.12：棋盘改成「按本关内容尺寸铺满可用区」。
+     旧做法用固定画布 FRAME_X×FRAME_Y（9.62×12.62，取的是全部关卡的数学上界），
+     但各关内容其实只有 5.62~8.62 宽 × 8.62~11.62 高 —— 内容只占画布一半左右，
+     卡片常年 45px（货栏卡槽 62px），棋盘里大片空白。
+     现在直接用本关 unitsX/unitsY 算 cell：棋盘正好收在内容外沿，可用区被吃满，
+     卡片随之放大到 47~64px，且形状各异时棋盘也跟着变形状。
+     可用区 = 已扣掉顶部信息区 / 货栏 / 道具栏 / 安全区与固定 8px 间距的矩形，
+     所以「牌不会压到金币、关卡名、货栏、道具」这条仍然由构造保证。
+     #table 会在棋盘外沿再扩 TABLE_PAD，这里一并预留掉。 */
+  var fx=Math.max(1, unitsX), fy=Math.max(1, unitsY);
+  cell=Math.min((availW-TABLE_PAD*2)/fx, (availH-TABLE_PAD*2)/fy);
   if(!(cell>0)) cell=1;
   var bw=Math.round(fx*cell), bh=Math.round(fy*cell);
-  /* 关卡内容在画布内居中 */
-  offX=Math.round((fx-unitsX)/2*cell);
-  offY=Math.round((fy-unitsY)/2*cell);
+  /* 内容在棋盘内居中：unitsX/unitsY 已经 = 牌的实际外沿 + 两边各 EXT_PAD
+     （见 p3 末尾），所以这里偏移就是「一边的留白」。
+     以前写 (fx-unitsX)/2（恒为 0），留白全堆在右下 —— 遮帘/链珠那两次
+     「偏移漏了」的 bug 都出自这套坐标，改动时务必三处一起看：
+     layout() 的 offX/offY、placeCurtains()、boardRectOf()。 */
+  offX=Math.round(EXT_PAD*cell);
+  offY=Math.round(EXT_PAD*cell);
   LAY.usableW=Math.round(availW); LAY.usableH=Math.round(availH);
   LAY.cell=cell; LAY.card=Math.max(2,Math.round(CARD*cell));
   LAY.rect={ w:bw, h:bh };
   LAY.frame={ w:fx, h:fy, offX:offX, offY:offY,
               levelW:+unitsX.toFixed(2), levelH:+unitsY.toFixed(2),
-              oversize:((unitsX>FRAME_X+1e-6)||(unitsY>FRAME_Y+1e-6)),
-              /* 中文别名：验收脚本按这几个键读「画布 / 本关内容 / 是否超界」 */
-              画布X:fx, 画布Y:fy, 本关X:+unitsX.toFixed(2), 本关Y:+unitsY.toFixed(2),
-              超出画布:((unitsX>FRAME_X+1e-6)||(unitsY>FRAME_Y+1e-6)) };
+              /* 旧字段保留（老验收在读），语义改成「按内容铺满」 */
+              oversize:false,
+              画布X:+fx.toFixed(2), 画布Y:+fy.toFixed(2),
+              本关X:+unitsX.toFixed(2), 本关Y:+unitsY.toFixed(2),
+              超出画布:false, 按内容铺满:true,
+              /* 棋盘外沿（含 #table 外扩）是否仍在可用区内 */
+              含桌边宽:Math.round(bw+TABLE_PAD*2), 含桌边高:Math.round(bh+TABLE_PAD*2),
+              不压上下:((bh+TABLE_PAD*2)<=Math.round(availH)+1) &&
+                       ((bw+TABLE_PAD*2)<=Math.round(availW)+1) };
   LAY.sections={ header:Math.round(m.header), tray:Math.round(m.tray), tools:Math.round(m.tools),
                  padT:Math.round(m.padT), padB:Math.round(m.padB), vw:m.vw, vh:m.vh, gap:GAP };
   board.style.width=bw+'px'; board.style.height=bh+'px';
   var t=$('#table');
-  if(t){ t.style.width=(bw+24)+'px'; t.style.height=(bh+24)+'px'; }
+  if(t){ t.style.width=(bw+TABLE_PAD*2)+'px'; t.style.height=(bh+TABLE_PAD*2)+'px'; }
   var size=Math.max(2, Math.round(CARD*cell));
+  /* 「链」角标的字号按牌宽换算（CSS 里写的是 calc(var(--cardpx)*0.235)） */
+  board.style.setProperty('--cardpx', size+'px');
   G.cards.forEach(function(c){
     if(!c.el) return;
     c.el.style.width=size+'px';
@@ -3139,9 +3412,15 @@ function layout(){
   });
   placeCurtains();
   renderLinks();
+  /* 算出卡片大小后检查货栏卡槽有没有比卡片还大；大了就封顶并重排
+     （卡槽高度 ↔ 可用高度 ↔ 卡片大小 互相影响，是收敛的迭代：f'(slot)≈-0.1，
+      所以留 3 层深度让单次 layout() 就能基本收敛；scheduleLayout 的后续几遍负责收尾） */
+  if((depth||0)<3 && capSlotTo(size)) return layout((depth||0)+1);
   return true;
 }
-/* 实测体检：棋盘可用矩形与上下 8px 间距、卡片边长、是否溢出（第 4.2 / 20.7 节） */
+/* 实测体检：棋盘可用矩形与上下 8px 间距、卡片边长、是否溢出（第 4.2 / 20.7 节）
+   v0.12 补三项：棋盘是否按内容铺满、含桌边的外沿有没有越出可用区、
+   卡片与货栏卡槽的尺寸比（用户要「卡片和卡槽一样大」）。 */
 function layoutInfo(){
   var r={};
   try{
@@ -3160,6 +3439,36 @@ function layoutInfo(){
     r.tableRightOver=Math.round(bd.right - bw.right);
     r.trayRightOver=Math.round(tb.right - bw.right);
     r.sections=LAY.sections;
+    r.frame=LAY.frame;
+    /* 棋盘 + #table 外扩后的外沿，仍要在可用矩形内 */
+    r.含桌边宽=Math.round(bd.width+TABLE_PAD*2);
+    r.含桌边高=Math.round(bd.height+TABLE_PAD*2);
+    r.含桌边不越界=(r.含桌边宽<=r.usableW+1) && (r.含桌边高<=r.usableH+1);
+    var sl=document.querySelector('#tray .slot');
+    if(sl){
+      var sr=sl.getBoundingClientRect();
+      r.卡槽宽=Math.round(sr.width);
+      r.卡槽比=+(r.card/sr.width).toFixed(2);
+      /* 卡槽是否被「不得超过棋盘卡片」这条封顶了（宽窗/矮窗下会生效） */
+      var tr2=$('#tray');
+      r.卡槽封顶=!!(tr2 && tr2.style.gridTemplateColumns);
+      r.卡槽列=tr2 ? (tr2.style.gridTemplateColumns||'1fr×'+TRAY_N) : '';
+    }
+    /* 牌与三段的实际最近距离：负值 = 压到了 */
+    var cards=board.querySelectorAll('.card:not(.gone)');
+    var minTop=1e9, maxBot=-1e9, minL=1e9, maxR=-1e9;
+    Array.prototype.forEach.call(cards, function(el){
+      var q=el.getBoundingClientRect();
+      if(q.width<1) return;
+      if(q.top<minTop) minTop=q.top; if(q.bottom>maxBot) maxBot=q.bottom;
+      if(q.left<minL) minL=q.left;   if(q.right>maxR) maxR=q.right;
+    });
+    if(cards.length){
+      r.牌到顶栏=Math.round(minTop - hd.bottom);
+      r.牌到货栏=Math.round(tb.top - maxBot);
+      r.牌到左右=Math.round(Math.min(minL - bw.left, bw.right - maxR));
+      r.牌不压上下=(r.牌到顶栏>=0 && r.牌到货栏>=0);
+    }
   }catch(e){ r.err=String(e&&e.message||e); }
   return r;
 }
@@ -3200,6 +3509,18 @@ function updateHUD(){
   $('#btnShuffle').disabled = !playable;
   $('#btnUndo').disabled    = !playable || G.tray.length===0;
   $('#btnScissor').disabled = !playable;
+  /* 双果链的「点不动」提示（规格《两个卡片的锁链》4.3）：货栏只剩 1 个空位时，
+     双果链一次要收两张必然点不动 —— 让链子先变红闪起来，而不是等玩家白点一下。
+     类名在这里统一按当前空位数切换；paintCard 每次重写 className 会把它清掉，
+     而所有结算路径都是「repaintBoard() → … → updateHUD()」，所以这里补回得回来。 */
+  if(G){
+    var chainNoRoom = (TRAY_N - G.tray.length) < 2;
+    G.cards.forEach(function(c){
+      if(!c.el) return;
+      var isChained = !!c.el.querySelector('.chainbadge');
+      c.el.classList.toggle('chainblock', chainNoRoom && isChained);
+    });
+  }
 }
 /* 文案提示（v0.10 第 3 项）：出现后停留 10 秒才消失，期间再来一条就换文案并重新计时。 */
 function toast(msg){
@@ -4294,6 +4615,7 @@ var FIRST_TEACH = {
 };
 function buildLevel(lv){
   clearLater();
+  var _tb=nowMs();                       /* 生成本关（含可解性验证）的起点 */
   level=clamp(Math.floor(lv),1,MAX_LV);
   endGuard=false; winGuard=false; stuck=false; finalLock=false; finalCommitted=false; finalDone=null;
   busy=false; paused=false;
@@ -4306,6 +4628,9 @@ function buildLevel(lv){
     unitsX=built.unitsX; unitsY=built.unitsY;
     G=newCtx(cfg, built.cards, built.pairs, built.curtains);
     G.verify=built.verify;
+    lastBuildTries=(built.verify && built.verify.attempts) ? built.verify.attempts.length : 0;
+    lastBuildNodes=(built.verify && built.verify.nodes) || 0;
+    lastBuildDetail=(built.verify && built.verify.attempts) ? built.verify.attempts.slice(-3) : [];
     rngState=((cfg.__seed ^ 0x5bd1e995)>>>0) || 88675123;
     curtainDown=[true,false];
     ok=true;
@@ -4313,6 +4638,7 @@ function buildLevel(lv){
     if(window.console && console.error) console.error('关卡生成失败 lv='+level, err);
   }
   if(!ok){
+    lastBuildTries=-1; lastBuildNodes=-1; lastBuildDetail=['生成失败，回退第 1 关'];
     try{
       level=1;
       cfg=planFor(1);
@@ -4332,6 +4658,7 @@ function buildLevel(lv){
   tools.undo.free   =Math.min(6, 3+Math.floor(level/50));
   tools.scissor.free=Math.min(3, 1+Math.floor(level/90));
   G.seq=0;
+  lastBuildMs=Math.round(nowMs()-_tb);   /* 只统计「算这一关」，不含后面的渲染与动画 */
   renderBoard();
   computeLocked(G);
   repaintBoard();
@@ -4551,6 +4878,11 @@ function watchdog(){
 function exposeDebug(){
   window.__juguo = {
     state:function(){
+      /* G 还没建出来（外壳已上屏、棋盘下一帧才算）时不能直接读 G.tray/G.cards，
+         否则探针或存档恢复在第一时间调用会抛异常。返回一份「引导中」的骨架。 */
+      if(!G) return { level:level, phase:document.body.dataset.phase, booting:true,
+                      bootMs:0, board:0, tray:0, locked:0, teachLeft:0,
+                      buildMs:0, buildTries:0, buildNodes:0, buildDetail:[], frame:null };
       return {
         level:level, phase:document.body.dataset.phase, busy:busy, stuck:stuck,
         finalLock:finalLock, paused:paused, teachLeft:Math.max(0,teachUntil-Date.now()),
@@ -4567,6 +4899,9 @@ function exposeDebug(){
                      special:cfg.special, sp:cfg.sp, autoFinish:cfg.autoFinish,
                      verify:(G && G.verify) || cfg.verify || null } : null,
         board: boardCards(G).length,
+        /* 「进关慢」取证：这一关的生成本耗时 / 试了几个种子 / 验证搜了多少节点 */
+        buildMs:lastBuildMs, buildTries:lastBuildTries, buildNodes:lastBuildNodes,
+        buildDetail:lastBuildDetail.slice(), bootMs:bootMs,
         locked: boardCards(G).filter(function(c){ return c.locked; }).length,
         tray:G.tray.length,
         pairs:G.pairs.length, pairsBroken:G.pairs.filter(function(p){ return p.broken; }).length,
@@ -4979,6 +5314,51 @@ function exposeDebug(){
                traySealed:G.tray.filter(function(c){ return c.sealed; }).map(function(c){
                  return { id:c.id, fruit:c.fruit }; }) };
     },
+    /* ---- v0.12 第 1 项：双果链的可见标识 ---- */
+    chainState:function(){
+      var links=board.querySelector('#links');
+      var hooks=board.querySelectorAll('.card .hook');
+      var sides=[];
+      Array.prototype.forEach.call(hooks, function(el){
+        sides.push((el.className||'').replace('hook','').trim());
+      });
+      var beaded=0;
+      if(links){ beaded=links.querySelectorAll('circle').length; }
+      return {
+        未断链对数:G.pairs.filter(function(p){ return !p.broken; }).length,
+        已断链对数:G.pairs.filter(function(p){ return p.broken; }).length,
+        hook元素数:hooks.length,
+        hook朝向:sides,
+        链珠数:beaded,
+        链层z:(links && window.getComputedStyle) ? window.getComputedStyle(links).zIndex : '',
+        卡片z:(function(){ var c=board.querySelector('.card'); return c?c.style.zIndex:''; })()
+      };
+    },
+    /* ---- v0.12 第 3 项：网格选型预测 ----
+       只读计算，不改任何状态：给定可用区与底牌张数，枚举所有 (形状 × gw × gh)，
+       按 layout 的同一套算式算出会得到的 cell / 卡片边长 / 棋盘尺寸，从大到小排。
+       用途：回答「换几列能让卡片多大」，以及日后把「按屏幕长宽比选网格」接进去。
+       约束与真实生成器一致：格位数 ≥ 底牌张数，且不超过底牌张数/0.60（密度不低于 60% 口径）。 */
+    gridPlan:function(availW, availH, maxLayer, topN){
+      var w=availW||(LAY.usableW||400), h=availH||(LAY.usableH||600);
+      var ml=maxLayer||24, out=[], keys=Object.keys(SHAPES);
+      keys.forEach(function(k){
+        for(var gw=3; gw<=MAXGW; gw++){
+          for(var gh=gw; gh<=MAXGH; gh++){
+            var a=shapeCells(k,gw,gh).length;
+            if(a<ml || a<ml/0.60) continue;
+            var ux=(gw-1)+CARD+EXT_PAD*2, uy=(gh-1)+CARD+EXT_PAD*2;
+            var cell=Math.min((w-TABLE_PAD*2)/ux, (h-TABLE_PAD*2)/uy);
+            out.push({ shape:k, name:(SHAPES[k]||{}).n||k, gw:gw, gh:gh, area:a,
+                       cell:+cell.toFixed(1), card:+(CARD*cell).toFixed(1),
+                       boardW:Math.round(ux*cell), boardH:Math.round(uy*cell) });
+          }
+        }
+      });
+      out.sort(function(x,y){ return y.cell-x.cell || x.area-y.area; });
+      return { 可用宽:Math.round(w), 可用高:Math.round(h), 底牌张数:ml,
+               最大:out[0]||null, 前几:out.slice(0, topN||12) };
+    },
     /* ---- v0.11 第 1 项：死局自愈 ---- */
     legalMoveCount:function(){ return simLegalMoveCount(G); },
     lockCards:function(){
@@ -5157,14 +5537,33 @@ function start(){
   watchResize();
   setInterval(watchdog, 1000);
   var s=loadState();
-  var restored=false;
-  if(s && s.level===level) restored=applyState(s);
-  if(!restored){
-    if(s) toast('上次的牌局存档无法恢复，已按本关重新开始');
-    buildLevel(level);
+  exposeDebug();                         /* 先把调试口挂上：state() 在 G 为空时会返回「引导中」骨架 */
+
+  /* v0.12 第 5 项：入口提速。
+     以前这里是同步 buildLevel()：而 buildVerified 为了「真可解」要跑一次搜索
+     （实测 2~320ms，第 9 关 beam 模式 6886 节点 320ms；手机上还要乘 3~10 倍），
+     这段全在首帧之前，浏览器连标题栏都画不出来 ——
+     更糟的是外面那层「加载中…」遮罩挂在 iframe 的 load 事件上，
+     脚本不跑完 load 就不触发，于是玩家看到的是「点了半天还在加载中」。
+     现在拆成两步：外壳（标题/金币/货栏/道具栏）先上屏，棋盘在下一帧再算。
+     用双 rAF 而不是 setTimeout(0)，是为了保证第一帧真的已经绘制出来。 */
+  var bootGo=function(){
+    var restored=false;
+    if(s && s.level===level) restored=applyState(s);
+    if(!restored){
+      if(s) toast('上次的牌局存档无法恢复，已按本关重新开始');
+      buildLevel(level);
+    }
+    bootHint(false);
+    scheduleLayout();
+    bootMs=Math.round(nowMs()-BOOT_T0);  /* 脚本开始 → 首帧可玩（含存档恢复/建关/首次布局） */
+  };
+  bootHint(true);
+  if(window.requestAnimationFrame){
+    requestAnimationFrame(function(){ requestAnimationFrame(bootGo); });
+  } else {
+    later(bootGo, 0);
   }
-  scheduleLayout();
-  exposeDebug();
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', start);
